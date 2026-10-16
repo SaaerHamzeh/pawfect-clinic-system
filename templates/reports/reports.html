@@ -1,0 +1,688 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}المركز الشامل لتخصيص وتصدير التقارير | Pawfect Clinic{% endblock %}
+
+{% block content %}
+<div class="space-y-6 pb-12">
+
+    <!-- ========================================================================= -->
+    <!-- UNIFIED COMPREHENSIVE REPORT CUSTOMIZER ENGINE                            -->
+    <!-- ========================================================================= -->
+    <div x-data="{
+        // 1. Selected Domain
+        domain: 'patient', // 'patient', 'clinical', 'vaccinations', 'appointments', 'reminders', 'clients'
+
+        // 2. Filters State
+        selectedClient: '',
+        selectedPatient: '',
+        patientsList: [],
+        isLoadingPatients: false,
+        selectedSpecies: 'all',
+        selectedDoctor: 'all',
+        selectedStatus: 'all',
+        selectedRecordType: 'all',
+        selectedApptType: 'all',
+        vaccineScope: 'due', // 'due' or 'all'
+        vaccineName: '',
+        dueFilter: 'all',
+        reminderType: 'all',
+        searchQuery: '',
+        startDate: '',
+        endDate: '',
+        activeDatePreset: 'all',
+
+        // 3. Columns & Sheets Inclusions
+        includeBasic: true,
+        includeClinical: true,
+        includeVaccines: true,
+        includeAppointments: false,
+        includeReminders: false,
+        includeServices: true,
+        includeTreatment: true,
+        includePrescriptions: true,
+        includeNotes: true,
+
+        // 4. Methods
+        loadPatients() {
+            this.selectedPatient = '';
+            if (!this.selectedClient) {
+                this.patientsList = [];
+                return;
+            }
+            this.isLoadingPatients = true;
+            fetch('/reports/api/client-patients/' + this.selectedClient + '/')
+                .then(res => res.json())
+                .then(data => {
+                    this.patientsList = data.patients || [];
+                    this.isLoadingPatients = false;
+                })
+                .catch(err => {
+                    console.error('Error fetching patients:', err);
+                    this.isLoadingPatients = false;
+                });
+        },
+
+        setPreset(preset) {
+            this.activeDatePreset = preset;
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            if (preset === 'all') {
+                this.startDate = '';
+                this.endDate = '';
+            } else if (preset === 'today') {
+                this.startDate = todayStr;
+                this.endDate = todayStr;
+            } else if (preset === 'week') {
+                const weekAgo = new Date();
+                weekAgo.setDate(today.getDate() - 7);
+                const w_mm = String(weekAgo.getMonth() + 1).padStart(2, '0');
+                const w_dd = String(weekAgo.getDate()).padStart(2, '0');
+                this.startDate = `${weekAgo.getFullYear()}-${w_mm}-${w_dd}`;
+                this.endDate = todayStr;
+            } else if (preset === 'month') {
+                this.startDate = `${yyyy}-${mm}-01`;
+                this.endDate = todayStr;
+            } else if (preset === 'year') {
+                this.startDate = `${yyyy}-01-01`;
+                this.endDate = `${yyyy}-12-31`;
+            }
+        },
+
+        getDomainTitle() {
+            switch(this.domain) {
+                case 'patient': 
+                    return this.selectedPatient 
+                        ? 'التقرير الطبي الشامل للمريض (أوراق مفصلة)' 
+                        : (this.selectedClient ? 'سجل مرضى العميل المحدد' : 'دليل وسجل المرضى الشامل (كافة الحيوانات)');
+                case 'clinical': return 'سجل الزيارات والفحوصات السريرية';
+                case 'vaccinations': 
+                    return this.vaccineScope === 'due' 
+                        ? 'كشف التطعيمات والجرعات المستحقة للمتابعة' 
+                        : 'أرشيف وسجل كافة التطعيمات الشامل';
+                case 'appointments': return 'جدول وسجل المواعيد والزيارات';
+                case 'reminders': return 'سجل التذكيرات والمتابعات الدورية';
+                case 'clients': 
+                    return this.selectedClient ? 'تقرير ملف العميل وحيواناته' : 'دليل العملاء وسجلات المربين الشامل';
+                default: return 'تقرير مخصص';
+            }
+        },
+
+        getDomainIcon() {
+            switch(this.domain) {
+                case 'patient': return '📋';
+                case 'clinical': return '🩺';
+                case 'vaccinations': return '💉';
+                case 'appointments': return '📅';
+                case 'reminders': return '🔔';
+                case 'clients': return '👥';
+                default: return '📊';
+            }
+        },
+
+        buildExportUrl() {
+            const params = new URLSearchParams();
+            params.append('domain', this.domain);
+
+            if (this.selectedClient) params.append('client_id', this.selectedClient);
+            if (this.selectedPatient) params.append('patient_id', this.selectedPatient);
+            if (this.selectedSpecies && this.selectedSpecies !== 'all') params.append('species', this.selectedSpecies);
+            if (this.selectedDoctor && this.selectedDoctor !== 'all') params.append('doctor_id', this.selectedDoctor);
+            if (this.selectedStatus && this.selectedStatus !== 'all') params.append('status', this.selectedStatus);
+            if (this.selectedRecordType && this.selectedRecordType !== 'all') params.append('record_type', this.selectedRecordType);
+            if (this.selectedApptType && this.selectedApptType !== 'all') params.append('appointment_type', this.selectedApptType);
+            
+            if (this.domain === 'vaccinations') {
+                params.append('scope', this.vaccineScope);
+                if (this.dueFilter && this.dueFilter !== 'all') params.append('due_filter', this.dueFilter);
+                if (this.vaccineName) params.append('vaccine_name', this.vaccineName);
+            }
+            
+            if (this.reminderType && this.reminderType !== 'all') params.append('reminder_type', this.reminderType);
+            if (this.searchQuery) params.append('q', this.searchQuery);
+            if (this.startDate) params.append('start_date', this.startDate);
+            if (this.endDate) params.append('end_date', this.endDate);
+
+            // Sheet & Column inclusions
+            params.append('include_basic', this.includeBasic);
+            params.append('include_clinical', this.includeClinical);
+            params.append('include_vaccines', this.includeVaccines);
+            params.append('include_appointments', this.includeAppointments);
+            params.append('include_reminders', this.includeReminders);
+            params.append('include_services', this.includeServices);
+            params.append('include_treatment', this.includeTreatment);
+            params.append('include_prescriptions', this.includePrescriptions);
+            params.append('include_notes', this.includeNotes);
+
+            return '/reports/export/custom/?' + params.toString();
+        },
+
+        exportReport() {
+            window.location.href = this.buildExportUrl();
+        }
+    }" class="rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+        <!-- Form Inner Container with Generous Spacing -->
+        <div class="p-6 sm:p-8 space-y-8">
+
+            <!-- ================================================================= -->
+            <!-- STEP 1: Select Reporting Domain                                   -->
+            <!-- ================================================================= -->
+            <div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 font-bold text-sm flex items-center justify-center border border-primary-200">
+                            1
+                        </span>
+                        <div>
+                            <h2 class="text-base font-bold text-gray-800">اختر مجال ونوع التقرير المراد تصديره</h2>
+                            <p class="text-xs text-gray-500 mt-0.5">حدد القسم لتفعيل الفلاتر وخيارات التخصيص المناسبة</p>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold badge-brand">
+                            <span x-text="getDomainIcon()"></span>
+                            <span x-text="getDomainTitle()"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Domain Selection Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+
+                    <!-- 1. Patient Medical Dossier / Registry -->
+                    <button type="button" @click="domain = 'patient'"
+                        :class="domain === 'patient' 
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 shadow-md ring-2 ring-primary-300' 
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-gray-50'"
+                        class="p-4 rounded-xl border text-right transition-all duration-200 flex flex-col justify-between cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center mb-3">
+                            {% icon 'clipboard-list' 'w-6 h-6' %}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold leading-snug">سجل وتقارير المرضى</div>
+                            <div class="text-[11px] text-gray-500 mt-1" x-text="selectedPatient ? 'ملف طبي مفصل' : 'سجل شامل للمرضى'"></div>
+                        </div>
+                    </button>
+
+                    <!-- 2. Clinical Visits -->
+                    <button type="button" @click="domain = 'clinical'"
+                        :class="domain === 'clinical' 
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 shadow-md ring-2 ring-primary-300' 
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-gray-50'"
+                        class="p-4 rounded-xl border text-right transition-all duration-200 flex flex-col justify-between cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center mb-3">
+                            {% icon 'stethoscope' 'w-6 h-6' %}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold leading-snug">الزيارات السريرية</div>
+                            <div class="text-[11px] text-gray-500 mt-1">فحوصات، خدمات، أدوية</div>
+                        </div>
+                    </button>
+
+                    <!-- 3. Vaccinations -->
+                    <button type="button" @click="domain = 'vaccinations'"
+                        :class="domain === 'vaccinations' 
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 shadow-md ring-2 ring-primary-300' 
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-gray-50'"
+                        class="p-4 rounded-xl border text-right transition-all duration-200 flex flex-col justify-between cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-3">
+                            {% icon 'syringe' 'w-6 h-6' %}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold leading-snug">كشف التطعيمات</div>
+                            <div class="text-[11px] text-gray-500 mt-1">المستحقة أو الأرشيف</div>
+                        </div>
+                    </button>
+
+                    <!-- 4. Appointments Schedule -->
+                    <button type="button" @click="domain = 'appointments'"
+                        :class="domain === 'appointments' 
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 shadow-md ring-2 ring-primary-300' 
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-gray-50'"
+                        class="p-4 rounded-xl border text-right transition-all duration-200 flex flex-col justify-between cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center mb-3">
+                            {% icon 'calendar' 'w-6 h-6' %}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold leading-snug">جدول المواعيد</div>
+                            <div class="text-[11px] text-gray-500 mt-1">الأنواع والحالات والأطباء</div>
+                        </div>
+                    </button>
+
+                    <!-- 5. Reminders -->
+                    <button type="button" @click="domain = 'reminders'"
+                        :class="domain === 'reminders' 
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 shadow-md ring-2 ring-primary-300' 
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-gray-50'"
+                        class="p-4 rounded-xl border text-right transition-all duration-200 flex flex-col justify-between cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+                            {% icon 'bell' 'w-6 h-6' %}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold leading-snug">التذكيرات والمتابعة</div>
+                            <div class="text-[11px] text-gray-500 mt-1">المواعيد والتنبيهات</div>
+                        </div>
+                    </button>
+
+                    <!-- 6. Clients Directory -->
+                    <button type="button" @click="domain = 'clients'"
+                        :class="domain === 'clients' 
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 shadow-md ring-2 ring-primary-300' 
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-gray-50'"
+                        class="p-4 rounded-xl border text-right transition-all duration-200 flex flex-col justify-between cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center mb-3">
+                            {% icon 'user' 'w-6 h-6' %}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold leading-snug">دليل العملاء</div>
+                            <div class="text-[11px] text-gray-500 mt-1">المربون والحيوانات</div>
+                        </div>
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- ================================================================= -->
+            <!-- STEP 2: Scopes, Criteria & Dynamic Filters                        -->
+            <!-- ================================================================= -->
+            <div class="bg-gray-50 mt-2 rounded-2xl p-6 border border-gray-200 space-y-6">
+                <div class="flex items-center gap-3 pb-3 border-b border-gray-200">
+                    <span class="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 font-bold text-sm flex items-center justify-center border border-primary-200">
+                        2
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800">تخصيص النطاق والتصفية الدقيقة للبيانات</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">اختر الفلاتر أو اتركها على الوضع الافتراضي لتضمين كل السجلات</p>
+                    </div>
+                </div>
+
+                <!-- Responsive Filter Form Controls -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                    <!-- Client Selector -->
+                    <div x-show="domain === 'patient' || domain === 'clinical' || domain === 'clients'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">العميل (المالك)</label>
+                        <select x-model="selectedClient" @change="loadPatients()"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="">-- جميع العملاء المسجلين بالعيادة --</option>
+                            {% for cl in clients %}
+                            <option value="{{ cl.pk }}">{{ cl.full_name }} ({{ cl.phone }}) [{{ cl.pets_count }} حيوانات]</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Patient Selector -->
+                    <div x-show="domain === 'patient' || domain === 'clinical'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">المريض (الحيوان)</label>
+                        <select x-model="selectedPatient"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <template x-if="!selectedClient">
+                                <option value="">-- كافة المرضى المسجلين بالعيادة (سجل شامل) --</option>
+                            </template>
+                            <template x-if="selectedClient && !isLoadingPatients">
+                                <option value="">-- كافة حيوانات هذا العميل --</option>
+                            </template>
+                            <template x-if="isLoadingPatients">
+                                <option value="">جاري جلب الحيوانات...</option>
+                            </template>
+                            <template x-for="p in patientsList" :key="p.id">
+                                <option :value="p.id" x-text="p.name + ' (' + (p.breed || p.species) + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Species Filter (Universal for Pet, Clinical, Vaccine, Appt, Reminders) -->
+                    <div x-show="domain === 'patient' || domain === 'clinical' || domain === 'vaccinations' || domain === 'appointments' || domain === 'reminders'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">فصيلة / نوع الحيوان</label>
+                        <select x-model="selectedSpecies"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">كافة الفصائل والأنواع</option>
+                            {% for sp_code, sp_label in species_list %}
+                            <option value="{{ sp_code }}">{{ sp_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Vaccinations Scope & Filter -->
+                    <div x-show="domain === 'vaccinations'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">نطاق تقرير التطعيمات</label>
+                        <select x-model="vaccineScope"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition font-semibold text-primary-700">
+                            <option value="due">التطعيمات المستحقة والمقبلة للمتابعة (Due / Overdue)</option>
+                            <option value="all">أرشيف وسجل كافة التطعيمات المنفذة بالعيادة</option>
+                        </select>
+                    </div>
+
+                    <!-- Vaccinations Due Specific Timing -->
+                    <div x-show="domain === 'vaccinations' && vaccineScope === 'due'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">توقيت استحقاق الجرعة القادمة</label>
+                        <select x-model="dueFilter"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">كافة المواعيد المستحقة القادمة والمتأخرة</option>
+                            <option value="overdue">المتأخرة عن موعدها فقط (Overdue ⚠️)</option>
+                            <option value="today">المستحقة اليوم فقط</option>
+                            <option value="week">المستحقة خلال الـ 7 أيام القادمة</option>
+                            <option value="month">المستحقة خلال الـ 30 يوماً القادمة</option>
+                        </select>
+                    </div>
+
+                    <!-- Vaccine Name Filter -->
+                    <div x-show="domain === 'vaccinations'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">اسم اللقاح / التطعيم</label>
+                        <input type="text" x-model="vaccineName" list="vaccine-names-list" placeholder="الكل، أو اكتب اسم التطعيم..."
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                        <datalist id="vaccine-names-list">
+                            {% for v_name in vaccine_names %}
+                            <option value="{{ v_name }}"></option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+
+                    <!-- Doctor Selector (Clinical, Vaccinations & Appointments) -->
+                    <div x-show="domain === 'clinical' || domain === 'appointments' || domain === 'vaccinations'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">الطبيب البيطري المشرف</label>
+                        <select x-model="selectedDoctor"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">جميع الأطباء البيطريين</option>
+                            {% for doc in doctors %}
+                            <option value="{{ doc.pk }}">د. {{ doc.get_full_name|default:doc.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Clinical Visit Type -->
+                    <div x-show="domain === 'clinical'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">نوع الزيارة أو الفحص</label>
+                        <select x-model="selectedRecordType"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">جميع أنواع الفحوصات والزيارات</option>
+                            {% for rt_code, rt_label in clinical_record_types %}
+                            <option value="{{ rt_code }}">{{ rt_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Appointments Type Filter -->
+                    <div x-show="domain === 'appointments'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">نوع الموعد أو الخدمة</label>
+                        <select x-model="selectedApptType"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">كافة أنواع المواعيد</option>
+                            {% for at_code, at_label in appointment_types %}
+                            <option value="{{ at_code }}">{{ at_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Appointments Status Filter -->
+                    <div x-show="domain === 'appointments'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">حالة الموعد</label>
+                        <select x-model="selectedStatus"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">جميع حالات المواعيد</option>
+                            <option value="SCHEDULED">مجدول</option>
+                            <option value="COMPLETED">مكتمل ومُنفذ</option>
+                            <option value="CANCELLED">ملغى</option>
+                            <option value="NO_SHOW">لم يحضر (No-show)</option>
+                        </select>
+                    </div>
+
+                    <!-- Reminders Type -->
+                    <div x-show="domain === 'reminders'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">نوع التذكير</label>
+                        <select x-model="reminderType"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">جميع أنواع التذكيرات</option>
+                            {% for r_code, r_label in reminder_types %}
+                            <option value="{{ r_code }}">{{ r_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Reminders Status -->
+                    <div x-show="domain === 'reminders'">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">حالة التذكير</label>
+                        <select x-model="selectedStatus"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                            <option value="all">جميع الحالات</option>
+                            <option value="PENDING">معلق / قيد الانتظار</option>
+                            <option value="COMPLETED">مكتمل</option>
+                            <option value="CONVERTED">تم تحويله لموعد</option>
+                            <option value="CANCELLED">ملغى</option>
+                        </select>
+                    </div>
+
+                    <!-- Clinical / General Keyword Search -->
+                    <div x-show="domain === 'clinical' || (domain === 'patient' && !selectedPatient)">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">بحث بكلمة مفتاحية (اسم / تشخيص / علاج)</label>
+                        <input type="text" x-model="searchQuery" placeholder="ابحث في الأعراض، التشخيص، أو الاسم..."
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                    </div>
+
+                </div>
+
+                <!-- Date Range Controls with Quick Filters -->
+                <div x-show="domain !== 'clients'" class="pt-4 border-t border-gray-200">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <label class="block text-xs font-bold text-gray-700">النطاق الزمني والتاريخ:</label>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" @click="setPreset('all')"
+                                :class="activeDatePreset === 'all' ? 'bg-primary-600 text-white font-bold' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-xs rounded-lg transition cursor-pointer">الكل</button>
+                            <button type="button" @click="setPreset('today')"
+                                :class="activeDatePreset === 'today' ? 'bg-primary-600 text-white font-bold' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-xs rounded-lg transition cursor-pointer">اليوم</button>
+                            <button type="button" @click="setPreset('week')"
+                                :class="activeDatePreset === 'week' ? 'bg-primary-600 text-white font-bold' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-xs rounded-lg transition cursor-pointer">آخر 7 أيام</button>
+                            <button type="button" @click="setPreset('month')"
+                                :class="activeDatePreset === 'month' ? 'bg-primary-600 text-white font-bold' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-xs rounded-lg transition cursor-pointer">هذا الشهر</button>
+                            <button type="button" @click="setPreset('year')"
+                                :class="activeDatePreset === 'year' ? 'bg-primary-600 text-white font-bold' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-xs rounded-lg transition cursor-pointer">هذا العام</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">من تاريخ</label>
+                            <input type="date" x-model="startDate" @change="activeDatePreset = 'custom'"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">إلى تاريخ</label>
+                            <input type="date" x-model="endDate" @change="activeDatePreset = 'custom'"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white text-gray-800 focus:outline-none focus:border-primary-500 transition">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================================================= -->
+            <!-- STEP 3: Content & Section Inclusions                              -->
+            <!-- ================================================================= -->
+            <div>
+                <div class="flex items-center mt-2 gap-3 mb-4 pb-3 border-b border-gray-100">
+                    <span class="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 font-bold text-sm flex items-center justify-center border border-primary-200">
+                        3
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800">تخصيص الأوراق والأعمدة المضمنة بالملف</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">حدد البيانات والأعمدة التي ترغب في إظهارها داخل ملف الـ Excel</p>
+                    </div>
+                </div>
+
+                <!-- Patient Dossier Sheet Checkboxes (When a specific patient is selected) -->
+                <div x-show="domain === 'patient' && selectedPatient" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <label class="flex items-center gap-3.5 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                            <input type="checkbox" x-model="includeBasic" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                            <div>
+                                <span class="text-xs font-bold text-gray-800 block">ورقة البيانات الأساسية</span>
+                                <span class="text-[11px] text-gray-500">بيانات الحيوان، المالك، والشريحة</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3.5 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                            <input type="checkbox" x-model="includeClinical" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                            <div>
+                                <span class="text-xs font-bold text-gray-800 block">ورقة السجل السريري</span>
+                                <span class="text-[11px] text-gray-500">الفحوصات، التشخيصات والجرعات</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3.5 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                            <input type="checkbox" x-model="includeVaccines" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                            <div>
+                                <span class="text-xs font-bold text-gray-800 block">ورقة سجل التطعيمات</span>
+                                <span class="text-[11px] text-gray-500">اللقاحات، التشغيلات ومواعيد الاستحقاق</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3.5 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                            <input type="checkbox" x-model="includeAppointments" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                            <div>
+                                <span class="text-xs font-bold text-gray-800 block">ورقة سجل المواعيد</span>
+                                <span class="text-[11px] text-gray-500">المواعيد السابقة والملغاة والقادمة</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3.5 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                            <input type="checkbox" x-model="includeReminders" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                            <div>
+                                <span class="text-xs font-bold text-gray-800 block">ورقة سجل التذكيرات</span>
+                                <span class="text-[11px] text-gray-500">تذكيرات التطعيم والمتابعات السريرية</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3.5 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                            <input type="checkbox" x-model="includeServices" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                            <div>
+                                <span class="text-xs font-bold text-gray-800 block">عمود الخدمات والمرفقات</span>
+                                <span class="text-[11px] text-gray-500">الخدمات المنفذة وعدد المرفقات الطبية</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+
+
+                <!-- Clinical Record Columns Checkboxes -->
+                <div x-show="domain === 'clinical'" class="grid grid-cols-1 mb-2 sm:grid-cols-3 gap-4">
+                    <label class="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                        <input type="checkbox" x-model="includeTreatment" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                        <div>
+                            <span class="text-xs font-bold text-gray-800 block">عمود الإجراءات والعلاج</span>
+                            <span class="text-[11px] text-gray-500">تفاصيل التدخلات العلاجية المنفذة</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                        <input type="checkbox" x-model="includePrescriptions" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                        <div>
+                            <span class="text-xs font-bold text-gray-800 block">عمود الوصفات الطبية</span>
+                            <span class="text-[11px] text-gray-500">الأدوية المنزلية وتعليمات الجرعات</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                        <input type="checkbox" x-model="includeServices" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                        <div>
+                            <span class="text-xs font-bold text-gray-800 block">عمود الخدمات المنفذة</span>
+                            <span class="text-[11px] text-gray-500">الخدمات السريرية والمرفقات الطبية</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Appointments Record Columns Checkboxes -->
+                <div x-show="domain === 'appointments'" class="grid grid-cols-1 mb-2 sm:grid-cols-2 gap-4">
+                    <label class="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary-400 cursor-pointer transition shadow-sm">
+                        <input type="checkbox" x-model="includeNotes" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                        <div>
+                            <span class="text-xs font-bold text-gray-800 block">تضمين عمود الملاحظات والسبب</span>
+                            <span class="text-[11px] text-gray-500">تفاصيل وسبب حجز الموعد وملاحظات الاستقبال</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Vaccinations Info Banner -->
+                <div x-show="domain === 'vaccinations'" class="p-4 rounded-xl mb-2 bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                        {% icon 'syringe' 'w-5 h-5' %}
+                    </div>
+                    <div>
+                        <strong class="font-bold">أعمدة كشف التطعيمات:</strong>
+                        <p class="mt-0.5 text-blue-800">يتضمن الملف اسم الحيوان، الفصيلة، اسم المالك، رقم الهاتف للتواصل، اسم اللقاح، رقم التشغيلة، تاريخ الإعطاء، تاريخ الجرعة القادمة، والطبيب البيطري.</p>
+                    </div>
+                </div>
+
+                <!-- Clients Directory Info Banner -->
+                <div x-show="domain === 'clients'" class="p-4 rounded-xl mb-2 bg-slate-50 border border-slate-200 text-slate-900 text-xs flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                        {% icon 'user' 'w-5 h-5' %}
+                    </div>
+                    <div>
+                        <strong class="font-bold">دليل العملاء وسجلات المربين:</strong>
+                        <p class="mt-0.5 text-slate-800">يتضمن اسم العميل، رقم الهاتف، العنوان، عدد الحيوانات التابعة، قائمة أسماء وفصائل الحيوانات، وتاريخ التسجيل بالعيادة.</p>
+                    </div>
+                </div>
+
+                <!-- Reminders Info Banner -->
+                <div x-show="domain === 'reminders'" class="p-4 rounded-xl mb-2 bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                        {% icon 'bell' 'w-5 h-5' %}
+                    </div>
+                    <div>
+                        <strong class="font-bold">سجل التذكيرات والمتابعات:</strong>
+                        <p class="mt-0.5 text-amber-800">يتضمن تاريخ الاستحقاق، نوع التذكير، المريض والفصيلة، المالك والهاتف، الحالة، الموعد المحول إليه (إن وجد)، والملاحظات.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ================================================================= -->
+            <!-- STEP 4: Live Summary & Direct One-Click Export Action             -->
+            <!-- ================================================================= -->
+            <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-gray-100 p-6 rounded-xl">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-600">جاهز للتوليد والتصدير:</span>
+                        <span class="text-sm font-extrabold text-primary-700 flex items-center gap-1.5">
+                            <span x-text="getDomainIcon()"></span>
+                            <span x-text="getDomainTitle()"></span>
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            صيغة الملف: <strong>Microsoft Excel (.xlsx)</strong>
+                        </span>
+                        <span>•</span>
+                        <span>التوجيه: <strong>RTL (يمين إلى يسار)</strong></span>
+                        <span>•</span>
+                        <span>النظام: <strong>تشغيل محلي بدون إنترنت</strong></span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <button type="button" @click="exportReport()"
+                        class="btn-export px-6 py-3 rounded-xl text-white font-bold text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>توليد وتصدير ملف (Excel)</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

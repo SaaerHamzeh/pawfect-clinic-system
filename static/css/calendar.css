@@ -1,0 +1,627 @@
+/* ==========================================================================
+   FullCalendar v6 RTL Enhancements & Modern Event Cards (Pawfect Clinic)
+   ========================================================================== */
+
+.fc {
+    font-family: inherit !important;
+    direction: rtl !important;
+    text-align: right !important;
+    --fc-border-color: #f1f5f9;
+    --fc-page-bg-color: #ffffff;
+    --fc-neutral-bg-color: #f8fafc;
+    --fc-list-event-hover-bg-color: #f8fafc;
+    --fc-today-bg-color: #f0fdfa;
+}
+
+/* Toolbar Styling */
+.fc .fc-toolbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
+    color: #0f2a3a !important;
+    letter-spacing: -0.01em !important;
+}
+
+.fc .fc-button-group {
+    border-radius: 0.75rem !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+.fc .fc-button {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 0.95rem !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    border: none !important;
+    text-transform: none !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+
+.fc .fc-button:hover {
+    background: #f8fafc !important;
+    color: #813db5 !important;
+}
+
+/* Active buttons in toolbar (Mauve with soft glow) */
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+    background: linear-gradient(135deg, #9b5ec9, #8343b2) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(155, 94, 201, 0.3) !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active:hover {
+    background: linear-gradient(135deg, #8343b2, #6b21a8) !important;
+}
+
+/* Today Button */
+.fc .fc-today-button {
+    border-radius: 0.75rem !important;
+    border: 1px solid #e2e8f0 !important;
+    font-weight: 700 !important;
+    background: #f8fafc !important;
+    color: #334155 !important;
+    padding: 0.5rem 1rem !important;
+    margin-right: 0.5rem !important;
+}
+
+.fc .fc-today-button:hover {
+    background: #e2e8f0 !important;
+}
+
+/* Day & Col Headers */
+.fc .fc-col-header-cell {
+    background: #f8fafc !important;
+    padding: 0.65rem 0 !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    border-color: #f1f5f9 !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+    color: #475569 !important;
+    text-decoration: none !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Today Cell Highlight */
+.fc .fc-day-today {
+    background-color: #f0fdfa !important;
+}
+
+.fc .fc-day-today .fc-col-header-cell-cushion {
+    color: #0d9488 !important;
+    font-weight: 800 !important;
+}
+
+.fc .fc-daygrid-day-number {
+    font-size: 0.8125rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    text-decoration: none !important;
+    padding: 4px 8px !important;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+    background-color: #0d9488 !important;
+    color: #ffffff !important;
+    border-radius: 6px !important;
+    display: inline-block !important;
+    margin: 2px !important;
+}
+
+/* ==========================================================================
+   High-End Modern Event Cards (Crisp, High Contrast & Clean)
+   ========================================================================== */
+
+.fc-event {
+    border-radius: 9px !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    overflow: hidden !important;
+}
+
+.fc-timegrid-event {
+    margin: 1px 2px !important;
+    border-radius: 9px !important;
+}
+
+.fc-event:hover {
+    transform: translateY(-2px) scale(1.01) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12) !important;
+    z-index: 40 !important;
+}
+
+.fc-event-main {
+    padding: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    overflow: hidden !important;
+}
+
+/* Clean Event Card Inner Container */
+.fc-event-clean-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 3px;
+    padding: 4px 7px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    text-align: right;
+    border-right-width: 4px;
+    border-right-style: solid;
+    border-radius: 8px;
+    background-color: inherit;
+}
+
+/* Top: Type Badge & Time (Stacked) */
+.fc-card-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    line-height: 1.15;
+}
+
+.fc-card-time {
+    font-size: 0.72rem;
+    font-weight: 800;
+    direction: rtl;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.fc-card-badge {
+    font-size: 0.625rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
+}
+
+/* Body: Patient Name, Owner & Doctor (Stacked Layout) */
+.fc-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.fc-card-title {
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.fc-card-owner {
+    font-size: 0.70rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.fc-card-doctor {
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+/* DayGrid (Month view) Card Tweaks */
+.fc-daygrid-event {
+    padding: 2px 4px !important;
+    margin: 1px 2px !important;
+    border-radius: 6px !important;
+}
+
+.fc-daygrid-event .fc-event-clean-card {
+    padding: 2px 4px !important;
+    border-right-width: 3px !important;
+}
+
+.fc-daygrid-event .fc-card-header {
+    margin-bottom: 0 !important;
+}
+
+.fc-daygrid-event .fc-card-doctor {
+    display: none !important;
+}
+
+/* TimeGrid Slot Customization */
+.fc .fc-timegrid-slot {
+    height: 3.25rem !important;
+}
+
+.fc .fc-timegrid-slot-label-cushion {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    font-family: monospace !important;
+}
+
+.fc .fc-timegrid-now-indicator-line {
+    border-color: #0d9488 !important;
+    border-width: 2.5px !important;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+    border-color: #0d9488 !important;
+}
+
+/* ==========================================================================
+   Concurrent / Overlapping Events (Neat Side-by-Side Layout & Clean Separation)
+   ========================================================================== */
+.fc-timegrid-event-harness {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    box-sizing: border-box !important;
+}
+
+.fc-timegrid-event-harness-inset {
+    margin-right: 2px !important;
+    margin-left: 2px !important;
+}
+
+.fc-timegrid-event {
+    margin: 1.5px 2px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.fc-daygrid-event-harness {
+    margin-bottom: 3px !important;
+    padding: 0 1.5px !important;
+}
+
+/* ==========================================================================
+   FullCalendar Event Hover Popover (Popup Tooltip)
+   ========================================================================== */
+.fc-hover-tooltip {
+    position: fixed;
+    z-index: 999999;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    font-family: inherit;
+    direction: rtl;
+    text-align: right;
+    width: 270px;
+    max-width: calc(100vw - 24px);
+}
+
+.fc-tt-container {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 12px -2px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    backdrop-filter: blur(8px);
+}
+
+.fc-tt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.fc-tt-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.fc-tt-status {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 5px;
+}
+
+.fc-tt-time {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0f2a3a;
+    background: #f8fafc;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.fc-tt-body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.8rem;
+}
+
+.fc-tt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #334155;
+}
+
+.fc-tt-icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.fc-tt-patient {
+    color: #0f172a;
+}
+
+.fc-tt-patient-name {
+    font-weight: 800;
+}
+
+.fc-tt-species {
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+.fc-tt-phone {
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+.fc-tt-notes {
+    background: #fefce8;
+    border-right: 3px solid #eab308;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    color: #713f12;
+    margin-top: 2px;
+}
+
+.fc-tt-footer {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    text-align: center;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 5px;
+    margin-top: 2px;
+}
+
+/* ==========================================================================
+   Small Screens / Mobile View: Professional Dot & Capsule Indicator Mode
+   ========================================================================== */
+.fc-card-full-view {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    gap: 3px;
+}
+
+.fc-card-dot-view {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    height: 100%;
+    padding: 2px 4px;
+    box-sizing: border-box;
+}
+
+.fc-dot-indicator {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    animation: fcPulseDot 2s infinite ease-in-out;
+}
+
+@keyframes fcPulseDot {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.25);
+        opacity: 0.85;
+    }
+}
+
+.fc-dot-text {
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.1;
+}
+
+/* Tablet & Intermediate Screens (851px - 1080px): Hide extra lines */
+@media (min-width: 851px) and (max-width: 1080px) {
+    .fc-card-owner,
+    .fc-card-doctor {
+        display: none !important;
+    }
+    .fc-event-clean-card {
+        padding: 3px 5px !important;
+        gap: 1.5px !important;
+    }
+    .fc-card-title {
+        font-size: 0.72rem !important;
+    }
+    .fc-card-time {
+        font-size: 0.68rem !important;
+    }
+    .fc-card-badge {
+        font-size: 0.58rem !important;
+        padding: 1px 4px !important;
+    }
+}
+
+/* ==========================================================================
+   Container Query: Auto-switch any narrow event card (e.g. concurrent slots) to Dot / Capsule mode
+   ========================================================================== */
+.fc-event,
+.fc-timegrid-event,
+.fc-timegrid-event-harness {
+    container-type: inline-size;
+}
+
+/* 1. Equal Side-by-Side Concurrent Cards (width <= 140px):
+   Keep full card view with compact stacked text so both equal cards look clean and legible */
+@container (max-width: 140px) {
+    .fc-card-owner,
+    .fc-card-doctor {
+        display: none !important;
+    }
+    .fc-event-clean-card {
+        padding: 2px 3px !important;
+        gap: 1px !important;
+    }
+    .fc-card-title {
+        font-size: 0.65rem !important;
+        font-weight: 700 !important;
+    }
+    .fc-card-badge {
+        font-size: 0.52rem !important;
+        padding: 1px 3px !important;
+    }
+    .fc-card-time {
+        font-size: 0.62rem !important;
+    }
+}
+
+/* 2. Extremely narrow / 3+ Concurrent Appointments (width <= 55px):
+   Switch to Capsule / Dot view */
+@container (max-width: 300px) {
+    .fc-card-full-view {
+        display: none !important;
+    }
+
+    .fc-card-dot-view {
+        display: flex !important;
+        margin: 1px 1px !important;
+    }
+
+    .fc-event-clean-card {
+        padding: 2px 2px !important;
+        border-right-width: 2.5px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 6px !important;
+    }
+
+    .fc-event {
+        min-height: 20px !important;
+        border-radius: 6px !important;
+    }
+}
+
+/* 3. Ultra-dense / Smallest icons (width <= 40px): Minimal Glowing Dot */
+@container (max-width: 40px) {
+    .fc-dot-text {
+        display: none !important;
+    }
+
+    .fc-dot-indicator {
+        width: 8px !important;
+        height: 8px !important;
+        min-width: 8px !important;
+    }
+
+    .fc-event-clean-card {
+        border-right: none !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+}
+
+/* Mobile & Small Screens (<= 850px): Transform into Sleek Capsule / Dot Indicator */
+@media (max-width: 850px) {
+    .fc-card-full-view {
+        display: none !important;
+    }
+
+    .fc-card-dot-view {
+        display: flex !important;
+    }
+
+    .fc-event-clean-card {
+        padding: 2px 4px !important;
+        border-right-width: 3px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 7px !important;
+    }
+
+    .fc-event {
+        min-height: 22px !important;
+        border-radius: 7px !important;
+    }
+}
+
+/* Ultra Minimal Mode on Small Phones (<= 520px): Centered Glowing Dot */
+@media (max-width: 520px) {
+    .fc-dot-text {
+        display: none !important;
+    }
+
+    .fc-dot-indicator {
+        width: 10px !important;
+        height: 10px !important;
+        min-width: 10px !important;
+    }
+
+    .fc-event-clean-card {
+        border-right: none !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+
+    .fc-event {
+        min-height: 18px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 9999px !important;
+    }
+}

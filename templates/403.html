@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}غير مصرح بالوصول (403) | Pawfect Clinic{% endblock %}
+
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full text-center bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl mx-auto flex items-center justify-center text-3xl font-bold mb-4">
+            🚫
+        </div>
+
+        <h1 class="text-xl font-bold text-gray-900 mb-2">عذراً، الوصول غير مصرح به (403)</h1>
+        <p class="text-sm text-gray-500 mb-6 leading-relaxed">
+            {{ exception|default:"ليس لديك الصلاحية الفردية الكافية للوصول إلى هذه الصفحة أو تنفيذ هذا الإجراء. يرجى التواصل مع مدير النظام (Admin) إذا كنت بحاجة لمنحك هذه الصلاحية." }}
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="{% url 'core:dashboard' %}"
+                class="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg shadow-sm transition">
+                العودة للوحة التحكم
+            </a>
+            <button onclick="history.back()"
+                class="inline-flex items-center justify-center px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition">
+                الصفحة السابقة
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

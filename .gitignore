@@ -1,0 +1,40 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Media & Static
+media/
+staticfiles/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# Build & Distribution Artifacts
+build/
+dist/
+*.egg-info/
+*.spec.bak
+
+# Node & Frontend
+node_modules/
+.npm/
+
+# Backups & Sensitive local data
+backups/
+*.lic
+*.rar
+*.zip
+*.7z

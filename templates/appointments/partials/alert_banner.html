@@ -1,0 +1,26 @@
+<!-- Urgent Appointments Alert Banner -->
+{% if urgent_alerts_count > 0 and filter_deleted != 'deleted' %}
+<div class="mb-5 p-4 rounded-2xl bg-gradient-to-r from-teal-50 via-cyan-50 to-amber-50 border border-teal-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-lg font-bold shrink-0 shadow-md">
+            ⏰
+        </div>
+        <div>
+            <h4 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                تنبيه المواعيد الحالية والمتأخرة
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-teal-600 text-white">{{ urgent_alerts_count }}</span>
+            </h4>
+            <p class="text-xs text-gray-600 mt-0.5">
+                {% if due_now_list %}يوجد <strong class="text-teal-700 font-bold">{{ due_now_list|length }}</strong> موعد حان وقته الآن.{% endif %}
+                {% if overdue_list %}يوجد <strong class="text-amber-700 font-bold">{{ overdue_list|length }}</strong> موعد تجاوز وقته المحدد ويحتاج للتحديث.{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+        <a href="?status=SCHEDULED&date_filter=today" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+            <span>عرض مواعيد اليوم</span>
+            <span>📅</span>
+        </a>
+    </div>
+</div>
+{% endif %}

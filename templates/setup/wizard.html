@@ -1,0 +1,648 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>معالج الإعداد الأولي للعيادة | Pawfect Clinic</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
+
+    <!-- CSS -->
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <link href="{% static 'css/theme.css' %}?v=8" rel="stylesheet">
+
+    <!-- Alpine.js -->
+    <script src="{% static 'js/alpine.min.js' %}" defer></script>
+</head>
+
+<body class="login-page-bg min-h-screen flex items-center justify-center p-3 sm:p-6 lg:p-8 font-sans text-slate-800 antialiased"
+      x-data="setupWizardApp()">
+
+    <!-- Dynamic Width Container: Compact for Steps 1 & 2, Wide for Step 3 -->
+    <div class="w-full my-2 sm:my-6 transition-all duration-300"
+         :class="currentStep === 3 ? 'max-w-6xl' : 'max-w-2xl'">
+        <!-- Main Wizard Card -->
+        <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+            
+            <!-- Brand Header -->
+            <div class="theme-brand-bg px-4 py-4 sm:px-6 sm:py-5 text-center text-white relative">
+                <div class="relative z-10 flex flex-col items-center justify-center">
+                    <img src="{% static 'images/logo-white.png' %}" alt="Pawfect Clinic" class="h-10 sm:h-11 w-auto object-contain drop-shadow" />
+                </div>
+            </div>
+
+            <!-- Stepper Progress Bar -->
+            <div class="bg-slate-50 border-b border-slate-200 px-3 py-3 sm:px-6 sm:py-3.5">
+                <div class="flex items-center justify-between max-w-md mx-auto relative">
+                    <!-- Progress Connecting Track -->
+                    <div class="absolute top-4 left-6 right-6 h-0.5 bg-slate-200 -z-0"></div>
+                    <div class="absolute top-4 right-6 h-0.5 bg-primary-600 transition-all duration-300 -z-0"
+                         :style="'width: ' + ((currentStep - 1) * 50) + '%'"></div>
+
+                    <!-- Step 1 Indicator -->
+                    <div class="relative z-10 flex flex-col items-center gap-1 cursor-pointer select-none"
+                         @click="if(currentStep > 1) currentStep = 1">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-200"
+                             :class="currentStep === 1 ? 'bg-primary-600 text-white ring-4 ring-primary-100 shadow-sm scale-105' : (currentStep > 1 ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border-2 border-slate-300 text-slate-500')">
+                            <template x-if="currentStep > 1">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </template>
+                            <template x-if="currentStep <= 1"><span>1</span></template>
+                        </div>
+                        <div class="text-center">
+                            <span class="block text-xs font-bold transition-colors"
+                                  :class="currentStep === 1 ? 'text-primary-800' : (currentStep > 1 ? 'text-emerald-700' : 'text-slate-500')">
+                                حساب المدير
+                            </span>
+                            <span class="hidden sm:block text-xs text-slate-400">البيانات الإدارية</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 Indicator -->
+                    <div class="relative z-10 flex flex-col items-center gap-1 cursor-pointer select-none"
+                         @click="if(currentStep > 2) currentStep = 2">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-200"
+                             :class="currentStep === 2 ? 'bg-primary-600 text-white ring-4 ring-primary-100 shadow-sm scale-105' : (currentStep > 2 ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border-2 border-slate-300 text-slate-500')">
+                            <template x-if="currentStep > 2">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </template>
+                            <template x-if="currentStep <= 2"><span>2</span></template>
+                        </div>
+                        <div class="text-center">
+                            <span class="block text-xs font-bold transition-colors"
+                                  :class="currentStep === 2 ? 'text-primary-800' : (currentStep > 2 ? 'text-emerald-700' : 'text-slate-500')">
+                                فريق العمل
+                            </span>
+                            <span class="hidden sm:block text-xs text-slate-400">أطباء واستقبال</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 Indicator -->
+                    <div class="relative z-10 flex flex-col items-center gap-1 select-none">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-200"
+                             :class="currentStep === 3 ? 'bg-primary-600 text-white ring-4 ring-primary-100 shadow-sm scale-105' : 'bg-white border-2 border-slate-300 text-slate-500'">
+                            <span>3</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="block text-xs font-bold transition-colors"
+                                  :class="currentStep === 3 ? 'text-primary-800' : 'text-slate-500'">
+                                الخدمات والأنواع
+                            </span>
+                            <span class="hidden sm:block text-xs text-slate-400">التخصيص والتشغيل</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Body -->
+            <div class="p-4 sm:p-6 lg:p-7">
+                <!-- Global Error Box -->
+                <div x-show="errorMessage" x-cloak class="mb-4 p-3 bg-red-50 border-r-4 border-red-500 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2.5 shadow-sm">
+                    <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span x-text="errorMessage"></span>
+                </div>
+
+                <!-- ==================== STEP 1: ADMIN ACCOUNT ==================== -->
+                <div x-show="currentStep === 1" x-cloak class="space-y-4 sm:space-y-5">
+                    <div class="pb-3 border-b border-slate-200">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-900">الخطوة 1: إنشاء حساب مدير النظام الأساسي (Super Admin)</h2>
+                                <p class="text-xs text-slate-500 mt-0.5">يمتلك هذا الحساب الصلاحيات الإدارية والمالية والسريرية الكاملة للعيادة.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 my-3 sm:my-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                اسم المستخدم للدخول <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" x-model="admin.username" placeholder="مثال: admin"
+                                   class="w-full px-3.5 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition bg-white text-slate-800" required>
+                            <span class="text-xs text-slate-400 mt-1 block">يُستخدم حصرياً لتسجيل الدخول</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                الاسم الأول للمدير <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" x-model="admin.first_name" placeholder="مثال: د. أحمد"
+                                   class="w-full px-3.5 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition bg-white text-slate-800" required>
+                            <span class="text-xs text-slate-400 mt-1 block">يظهر في تقارير وسجلات العيادة</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                اسم العائلة / اللقب (اختياري)
+                            </label>
+                            <input type="text" x-model="admin.last_name" placeholder="مثال: النجار"
+                                   class="w-full px-3.5 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition bg-white text-slate-800">
+                            <span class="text-xs text-slate-400 mt-1 block">اللقب أو اسم العائلة الرسمي</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                كلمة المرور <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input :type="showAdminPassword ? 'text' : 'password'" x-model="admin.password" placeholder="••••••••"
+                                       class="w-full px-3.5 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition bg-white text-slate-800 pl-10" required>
+                                <button type="button" @click="showAdminPassword = !showAdminPassword"
+                                        class="absolute inset-y-0 left-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer">
+                                    <template x-if="!showAdminPassword">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </template>
+                                    <template x-if="showAdminPassword">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        </svg>
+                                    </template>
+                                </button>
+                            </div>
+                            <span class="text-xs text-slate-400 mt-1 block">6 خانات على الأقل</span>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                تأكيد كلمة المرور <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input :type="showAdminConfirmPassword ? 'text' : 'password'" x-model="admin.password_confirm" placeholder="••••••••"
+                                       class="w-full px-3.5 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition bg-white text-slate-800 pl-10" required>
+                                <button type="button" @click="showAdminConfirmPassword = !showAdminConfirmPassword"
+                                        class="absolute inset-y-0 left-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer">
+                                    <template x-if="!showAdminConfirmPassword">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </template>
+                                    <template x-if="showAdminConfirmPassword">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        </svg>
+                                    </template>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 sm:pt-5 mt-4 sm:mt-5 border-t border-slate-200 flex justify-end">
+                        <button type="button" @click="goToStep2()"
+                                class="w-full sm:w-auto btn-save px-6 py-2.5 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                            <span>التالي: إضافة فريق العمل</span>
+                            <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== STEP 2: USERS CREATION ==================== -->
+                <div x-show="currentStep === 2" x-cloak class="space-y-4 sm:space-y-5">
+                    <div class="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-900">الخطوة 2: إضافة مستخدمي العيادة (أطباء وموظفون)</h2>
+                                <p class="text-xs text-slate-500 mt-0.5">يمكنك إضافة أطباء وموظفي استقبال الآن أو تخطي هذه الخطوة وإضافتهم لاحقاً.</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="addNewUserRow()"
+                                class="btn-create inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl shadow-sm transition cursor-pointer self-stretch sm:self-auto active:scale-95">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>إضافة مستخدم</span>
+                        </button>
+                    </div>
+
+                    <!-- Empty User State -->
+                    <template x-if="users.length === 0">
+                        <div class="py-8 sm:py-10 px-4 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-2 my-2 sm:my-3">
+                            <div class="w-10 h-10 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center mx-auto shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs sm:text-sm font-bold text-slate-700">لم يتم إضافة أي مستخدم إضافي حتى الآن</p>
+                                <p class="text-xs text-slate-400 max-w-sm mx-auto mt-0.5 leading-relaxed">
+                                    هذه الخطوة اختيارية. يمكنك إضافة أعضاء الفريق الآن أو المتابعة مباشرة وإضافتهم في أي وقت.
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- User Rows -->
+                    <div class="space-y-3.5 my-2 sm:my-3">
+                        <template x-for="(usr, index) in users" :key="index">
+                            <div class="p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3 transition hover:border-slate-300">
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-5 h-5 rounded-full bg-primary-100 text-primary-800 text-xs font-bold flex items-center justify-center" x-text="index + 1"></span>
+                                        <span class="text-xs font-bold text-slate-800" x-text="'المستخدم #' + (index + 1)"></span>
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                                              :class="usr.role === 'VET' ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-purple-50 text-purple-700 border border-purple-200'"
+                                              x-text="usr.role === 'VET' ? 'طبيب بيطري' : 'موظف استقبال'"></span>
+                                    </div>
+                                    <button type="button" @click="removeUserRow(index)"
+                                            class="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>حذف</span>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">اسم الدخول *</label>
+                                        <input type="text" x-model="usr.username" placeholder="مثال: dr_omar"
+                                               class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none focus:border-primary-500 text-slate-800 transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">الاسم الكامل *</label>
+                                        <input type="text" x-model="usr.first_name" placeholder="مثال: د. عمر"
+                                               class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none focus:border-primary-500 text-slate-800 transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">الدور الوظيفي</label>
+                                        <select x-model="usr.role" class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none focus:border-primary-500 text-slate-800 transition cursor-pointer">
+                                            <option value="VET">طبيب بيطري (Vet)</option>
+                                            <option value="STAFF">موظف استقبال (Staff)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">كلمة المرور *</label>
+                                        <input type="password" x-model="usr.password" placeholder="••••••••"
+                                               class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none focus:border-primary-500 text-slate-800 transition">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="pt-4 sm:pt-5 mt-4 sm:mt-5 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
+                        <button type="button" @click="currentStep = 1"
+                                class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-center transition cursor-pointer">
+                            → السابق: حساب المدير
+                        </button>
+                        <button type="button" @click="goToStep3()"
+                                class="btn-save px-6 py-2.5 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                            <span x-text="users.length === 0 ? 'تخطي والمتابعة إلى الخطوة 3' : 'التالي: تخصيص الخدمات والأنواع'"></span>
+                            <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== STEP 3: CUSTOMIZATION (3 COLUMNS SIDE-BY-SIDE) ==================== -->
+                <div x-show="currentStep === 3" x-cloak class="space-y-4">
+                    <div class="pb-3 border-b border-slate-200">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-900">الخطوة 3: تخصيص الخدمات السريرية وأنواع الحيوانات</h2>
+                                <p class="text-xs text-slate-500 mt-0.5">البيانات مجهزة مسبقاً. حدد ما تدعمه في عيادتك أو أضف بنوداً إضافية بنقرة واحدة.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3 Columns Side-by-Side Grid (No Scroll Down Needed) -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 my-2">
+                        
+                        <!-- Column 1: Animal Species -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-bold text-slate-900">أنواع الحيوانات</span>
+                                        <span class="px-2 py-0.5 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-bold"
+                                              x-text="customizations.active_species.length + ' محدد'"></span>
+                                    </div>
+                                    <span class="text-xs text-slate-400">الفصائل المقبولة</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 pt-2.5 max-h-52 overflow-y-auto">
+                                    {% for sp in species_list %}
+                                    <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-xs font-medium cursor-pointer transition select-none shadow-sm"
+                                           :class="customizations.active_species.includes('{{ sp.name|escapejs }}') ? 'border-primary-500 bg-primary-50 text-primary-900 font-semibold' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'">
+                                        <input type="checkbox" value="{{ sp.name }}" x-model="customizations.active_species"
+                                               class="rounded text-primary-600 focus:ring-primary-500 w-3.5 h-3.5 cursor-pointer">
+                                        <span>{{ sp.icon }} {{ sp.name }}</span>
+                                    </label>
+                                    {% endfor %}
+
+                                    <!-- Dynamically added species -->
+                                    <template x-for="nsp in customizations.new_species" :key="nsp">
+                                        <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-400 rounded-xl text-xs font-bold cursor-pointer transition text-emerald-900 shadow-sm">
+                                            <input type="checkbox" :value="nsp" x-model="customizations.active_species"
+                                                   class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer">
+                                            <span x-text="'🐾 ' + nsp"></span>
+                                            <span class="px-1.5 py-0.5 text-xs font-extrabold bg-emerald-200 text-emerald-900 rounded">جديد</span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Add Custom Species Inline -->
+                            <div class="flex items-center gap-1.5 pt-2.5 border-t border-slate-100 mt-2">
+                                <input type="text" x-model="newSpeciesInput" @keydown.enter.prevent="addNewSpecies()" placeholder="+ فصيلة جديدة..."
+                                       class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none flex-1 focus:border-primary-500 text-slate-800 transition">
+                                <button type="button" @click="addNewSpecies()" class="text-xs px-3 py-1.5 shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl border border-slate-200 transition cursor-pointer">
+                                    إضافة
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Clinical Services -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-bold text-slate-900">الخدمات السريرية</span>
+                                        <span class="px-2 py-0.5 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-bold"
+                                              x-text="customizations.active_services.length + ' محدد'"></span>
+                                    </div>
+                                    <span class="text-xs text-slate-400">إجراءات الفحص</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 pt-2.5 max-h-52 overflow-y-auto">
+                                    {% for srv in services_list %}
+                                    <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-xs font-medium cursor-pointer transition select-none shadow-sm"
+                                           :class="customizations.active_services.includes('{{ srv.name|escapejs }}') ? 'border-primary-500 bg-primary-50 text-primary-900 font-semibold' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'">
+                                        <input type="checkbox" value="{{ srv.name }}" x-model="customizations.active_services"
+                                               class="rounded text-primary-600 focus:ring-primary-500 w-3.5 h-3.5 cursor-pointer">
+                                        <span>{{ srv.name }}</span>
+                                    </label>
+                                    {% endfor %}
+
+                                    <!-- Dynamically added services -->
+                                    <template x-for="nsrv in customizations.new_services" :key="nsrv">
+                                        <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-400 rounded-xl text-xs font-bold cursor-pointer transition text-emerald-900 shadow-sm">
+                                            <input type="checkbox" :value="nsrv" x-model="customizations.active_services"
+                                                   class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer">
+                                            <span x-text="'🩺 ' + nsrv"></span>
+                                            <span class="px-1.5 py-0.5 text-xs font-extrabold bg-emerald-200 text-emerald-900 rounded">جديد</span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Add Custom Service Inline -->
+                            <div class="flex items-center gap-1.5 pt-2.5 border-t border-slate-100 mt-2">
+                                <input type="text" x-model="newServiceInput" @keydown.enter.prevent="addNewService()" placeholder="+ خدمة سريرية..."
+                                       class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none flex-1 focus:border-primary-500 text-slate-800 transition">
+                                <button type="button" @click="addNewService()" class="text-xs px-3 py-1.5 shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl border border-slate-200 transition cursor-pointer">
+                                    إضافة
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Standard Vaccines -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-bold text-slate-900">دليل اللقاحات</span>
+                                        <span class="px-2 py-0.5 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-bold"
+                                              x-text="customizations.active_vaccines.length + ' محدد'"></span>
+                                    </div>
+                                    <span class="text-xs text-slate-400">التطعيمات الدورية</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 pt-2.5 max-h-52 overflow-y-auto">
+                                    {% for vac in vaccines_list %}
+                                    <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-xs font-medium cursor-pointer transition select-none shadow-sm"
+                                           :class="customizations.active_vaccines.includes('{{ vac.name|escapejs }}') ? 'border-primary-500 bg-primary-50 text-primary-900 font-semibold' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'">
+                                        <input type="checkbox" value="{{ vac.name }}" x-model="customizations.active_vaccines"
+                                               class="rounded text-primary-600 focus:ring-primary-500 w-3.5 h-3.5 cursor-pointer">
+                                        <span>{{ vac.name }}</span>
+                                    </label>
+                                    {% endfor %}
+
+                                    <!-- Dynamically added vaccines -->
+                                    <template x-for="nvac in customizations.new_vaccines" :key="nvac">
+                                        <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-400 rounded-xl text-xs font-bold cursor-pointer transition text-emerald-900 shadow-sm">
+                                            <input type="checkbox" :value="nvac" x-model="customizations.active_vaccines"
+                                                   class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer">
+                                            <span x-text="'💉 ' + nvac"></span>
+                                            <span class="px-1.5 py-0.5 text-xs font-extrabold bg-emerald-200 text-emerald-900 rounded">جديد</span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Add Custom Vaccine Inline -->
+                            <div class="flex items-center gap-1.5 pt-2.5 border-t border-slate-100 mt-2">
+                                <input type="text" x-model="newVaccineInput" @keydown.enter.prevent="addNewVaccine()" placeholder="+ اسم لقاح..."
+                                       class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white outline-none flex-1 focus:border-primary-500 text-slate-800 transition">
+                                <button type="button" @click="addNewVaccine()" class="text-xs px-3 py-1.5 shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl border border-slate-200 transition cursor-pointer">
+                                    إضافة
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Final Submission Overview -->
+                    <div class="p-3.5 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3">
+                        <div class="text-xs text-slate-700 space-y-0.5 text-center sm:text-right">
+                            <div class="flex items-center justify-center sm:justify-start gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                <span class="font-bold text-slate-900">جاهز للتشغيل المباشر</span>
+                            </div>
+                            <p class="text-slate-500">سيتم حفظ التفضيلات وإنشاء حساب المدير العام والتحويل للوحة التحكم.</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                            <button type="button" @click="currentStep = 2" :disabled="isSubmitting"
+                                    class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl border border-transparent hover:border-slate-200 text-center transition cursor-pointer">
+                                → السابق
+                            </button>
+                            <button type="button" @click="submitFullSetup()" :disabled="isSubmitting"
+                                    class="btn-save px-6 py-2.5 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95">
+                                <span x-show="!isSubmitting">إتمام الإعداد وتشغيل العيادة</span>
+                                <svg x-show="!isSubmitting" class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                                <span x-show="isSubmitting" x-cloak class="flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    <span>جاري تهيئة النظام...</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setupWizardApp() {
+            return {
+                currentStep: 1,
+                isSubmitting: false,
+                errorMessage: '',
+                showAdminPassword: false,
+                showAdminConfirmPassword: false,
+                admin: {
+                    username: '',
+                    first_name: '',
+                    last_name: '',
+                    password: '',
+                    password_confirm: ''
+                },
+                users: [],
+                customizations: {
+                    active_species: JSON.parse('{{ species_names_json|default:"[]"|escapejs }}'),
+                    active_services: JSON.parse('{{ services_names_json|default:"[]"|escapejs }}'),
+                    active_vaccines: JSON.parse('{{ vaccines_names_json|default:"[]"|escapejs }}'),
+                    new_species: [],
+                    new_services: [],
+                    new_vaccines: []
+                },
+                newSpeciesInput: '',
+                newServiceInput: '',
+                newVaccineInput: '',
+
+                goToStep2() {
+                    this.errorMessage = '';
+                    if (!this.admin.username.trim() || this.admin.username.trim().length < 3) {
+                        this.errorMessage = 'يرجى كتابة اسم مستخدم صالح للمدير (3 أحرف على الأقل).';
+                        return;
+                    }
+                    if (!this.admin.first_name.trim()) {
+                        this.errorMessage = 'يرجى كتابة الاسم الأول للمدير.';
+                        return;
+                    }
+                    if (!this.admin.password || this.admin.password.length < 6) {
+                        this.errorMessage = 'كلمة المرور يجب أن لا تقل عن 6 خانات.';
+                        return;
+                    }
+                    if (this.admin.password !== this.admin.password_confirm) {
+                        this.errorMessage = 'كلمة المرور وتأكيدها غير متطابقين.';
+                        return;
+                    }
+                    this.currentStep = 2;
+                },
+
+                addNewUserRow() {
+                    this.users.push({
+                        username: '',
+                        first_name: '',
+                        role: 'VET',
+                        password: ''
+                    });
+                },
+
+                removeUserRow(idx) {
+                    this.users.splice(idx, 1);
+                },
+
+                goToStep3() {
+                    this.errorMessage = '';
+                    // Validate added users if any
+                    for (let i = 0; i < this.users.length; i++) {
+                        const u = this.users[i];
+                        if (u.username.trim() || u.first_name.trim() || u.password) {
+                            if (!u.username.trim() || !u.first_name.trim() || !u.password) {
+                                this.errorMessage = `يرجى إكمال بيانات المستخدم #${i + 1} (اسم المستخدم، الاسم، وكلمة المرور) أو حذفه.`;
+                                return;
+                            }
+                            if (u.username.trim().toLowerCase() === this.admin.username.trim().toLowerCase()) {
+                                this.errorMessage = `اسم المستخدم «${u.username}» مستخدم لحساب المدير. يرجى اختيار اسم مستخدم آخر.`;
+                                return;
+                            }
+                        }
+                    }
+                    this.currentStep = 3;
+                },
+
+                addNewSpecies() {
+                    const val = this.newSpeciesInput.trim();
+                    if (val && !this.customizations.active_species.includes(val)) {
+                        this.customizations.active_species.push(val);
+                        this.customizations.new_species.push(val);
+                        this.newSpeciesInput = '';
+                    }
+                },
+
+                addNewService() {
+                    const val = this.newServiceInput.trim();
+                    if (val && !this.customizations.active_services.includes(val)) {
+                        this.customizations.active_services.push(val);
+                        this.customizations.new_services.push(val);
+                        this.newServiceInput = '';
+                    }
+                },
+
+                addNewVaccine() {
+                    const val = this.newVaccineInput.trim();
+                    if (val && !this.customizations.active_vaccines.includes(val)) {
+                        this.customizations.active_vaccines.push(val);
+                        this.customizations.new_vaccines.push(val);
+                        this.newVaccineInput = '';
+                    }
+                },
+
+                submitFullSetup() {
+                    this.errorMessage = '';
+                    this.isSubmitting = true;
+
+                    const payload = {
+                        admin: this.admin,
+                        users: this.users.filter(u => u.username.trim() && u.password),
+                        customizations: this.customizations
+                    };
+
+                    fetch("{% url 'setup:complete' %}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": "{{ csrf_token }}"
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(async (res) => {
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.success) {
+                            window.location.href = data.redirect_url || "/";
+                        } else {
+                            this.errorMessage = data.error || "حدث خطأ أثناء حفظ الإعداد الأولي. يرجى المحاولة ثانية.";
+                            this.isSubmitting = false;
+                        }
+                    })
+                    .catch(() => {
+                        this.errorMessage = "تعذر الاتصال بالخادم المحلي.";
+                        this.isSubmitting = false;
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

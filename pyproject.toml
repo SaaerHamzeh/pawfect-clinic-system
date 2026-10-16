@@ -1,0 +1,17 @@
+[project]
+name = "vet-clinic"
+version = "0.1.0"
+description = "Offline LAN-based veterinary clinic management system"
+requires-python = ">=3.12"
+dependencies = [
+    "Django",
+    "psycopg[binary]",
+    "django-environ",
+    "openpyxl",
+    "cryptography",
+    "waitress",
+    "whitenoise",
+]
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]

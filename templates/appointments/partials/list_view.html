@@ -1,0 +1,283 @@
+<!-- LIST VIEW -->
+<div x-show="currentView === 'list'" class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-3">
+        <div class="flex items-center gap-3">
+            <h2 class="text-lg font-bold text-gray-800">
+                {% if filter_deleted == 'deleted' %}سلة المحذوفات (المواعيد){% else %}جدول المواعيد{% endif %}
+            </h2>
+            <span class="text-xs bg-slate-100 text-gray-600 px-3 py-1 rounded-full font-medium">
+                عرض {{ appointments.object_list|length }} من إجمالي {{ page_obj.paginator.count }}
+            </span>
+        </div>
+
+        <!-- Bulk Actions Bar for Trash -->
+        {% if filter_deleted == 'deleted' and can_delete %}
+        <div x-show="selectedIds.length > 0" x-cloak class="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+            <span class="text-xs font-bold text-red-800">
+                تم تحديد <span x-text="selectedIds.length"></span> موعد
+            </span>
+            <button type="button" @click="showBulkHardDeleteModal = true"
+                class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-sm transition cursor-pointer">
+                🗑️ حذف نهائي للمحددة
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-right whitespace-nowrap">
+            <thead>
+                <tr class="bg-slate-50 text-gray-500 text-xs font-semibold uppercase">
+                    {% if filter_deleted == 'deleted' and can_delete %}
+                    <th class="px-4 py-3.5 text-center w-10">
+                        <input type="checkbox" x-model="selectAll"
+                            @change="toggleSelectAll([{% for appt in appointments %}'{{ appt.pk }}'{% if not forloop.last %},{% endif %}{% endfor %}])"
+                            class="rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                    </th>
+                    {% endif %}
+                    <th class="px-6 py-3.5">التاريخ والوقت</th>
+                    <th class="px-6 py-3.5">المدة والنوع</th>
+                    <th class="px-6 py-3.5">المريض والمالك</th>
+                    <th class="px-6 py-3.5">الشخص المُحضر</th>
+                    <th class="px-6 py-3.5">الطبيب المعالج</th>
+                    <th class="px-6 py-3.5">الحالة</th>
+                    <th class="px-6 py-3.5 text-center">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                {% for appt in appointments %}
+                <tr class="transition-colors {% if appt.is_due_now %}bg-teal-50/70 border-r-4 border-teal-500 hover:bg-teal-50{% elif appt.is_overdue %}bg-amber-50/60 border-r-4 border-amber-500 hover:bg-amber-50{% else %}hover:bg-slate-50/70{% endif %}">
+                    {% if filter_deleted == 'deleted' and can_delete %}
+                    <td class="px-4 py-4 text-center">
+                        <input type="checkbox" :value="'{{ appt.pk }}'" x-model="selectedIds"
+                            class="rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                    </td>
+                    {% endif %}
+
+                    <!-- Date & Time -->
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="w-9 h-9 rounded-lg {% if appt.is_due_now %}bg-teal-600 text-white font-bold animate-pulse{% elif appt.is_overdue %}bg-amber-600 text-white font-bold{% else %}bg-blue-50 text-primary-600 font-bold{% endif %} flex items-center justify-center text-xs shrink-0">
+                                {{ appt.time|time:"H:i" }}
+                            </div>
+                            <div>
+                                <span class="font-semibold text-gray-900 block">{{ appt.date|date:"Y-m-d" }}</span>
+                                <span class="text-xs text-gray-400 font-mono">{{ appt.time|time:"A h:i" }}</span>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Duration & Type -->
+                    <td class="px-6 py-4">
+                        <span class="font-medium text-gray-800 block text-xs">
+                            {{ appt.get_appointment_type_display }}
+                            {% if appt.vaccine_name %}
+                            <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                                {{ appt.vaccine_name }}
+                            </span>
+                            {% endif %}
+                        </span>
+                        <span class="text-xs text-gray-400 font-mono">{{ appt.duration }} دقيقة</span>
+                    </td>
+
+                    <!-- Patient & Owner -->
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                {% if appt.animal.species == 'DOG' %}{% icon 'dog' 'w-4 h-4 text-amber-600' %}{% elif appt.animal.species == 'CAT' %}{% icon 'cat' 'w-4 h-4 text-indigo-600' %}{% elif appt.animal.species == 'BIRD' %}{% icon 'bird' 'w-4 h-4 text-emerald-600' %}{% else %}{% icon 'paw' 'w-4 h-4 text-primary-600' %}{% endif %}
+                            </div>
+                            <div>
+                                <a href="{% url 'patients:detail' appt.animal.pk %}"
+                                    class="font-bold text-gray-900 hover:text-primary-600 transition flex items-center gap-1.5">
+                                    <span>{{ appt.animal.name }}</span>
+                                    {% if appt.animal.animal_id %}
+                                    <span
+                                        class="text-[10px] font-mono px-1 py-0.5 bg-primary-50 text-primary-700 font-bold rounded border border-primary-200">
+                                        {{ appt.animal.animal_id }}
+                                    </span>
+                                    {% endif %}
+                                </a>
+                                <p class="text-xs text-gray-400">
+                                    المالك: <a href="{% url 'clients:detail' appt.animal.client.pk %}"
+                                        class="hover:underline">{{ appt.animal.client.full_name }}</a>
+                                </p>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Brought By -->
+                    <td class="px-6 py-4 text-xs text-gray-600">
+                        {% if appt.brought_by %}
+                        <span class="bg-slate-100 text-gray-700 px-2 py-0.5 rounded font-medium">
+                            {{ appt.brought_by }}</span>
+                        {% else %}
+                        <span class="text-gray-400">المالك الدائم</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Doctor -->
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-primary-500"></span>
+                            <span class="text-gray-800 font-medium text-xs">
+                                د. {{ appt.doctor.get_full_name|default:appt.doctor.username }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Status Badge -->
+                    <td class="px-6 py-4">
+                        {% if appt.is_due_now %}
+                        <span
+                            class="px-2.5 py-1 text-xs font-bold rounded-full bg-teal-100 text-teal-800 border border-teal-300 animate-pulse flex items-center gap-1 w-fit">
+                            <span class="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
+                            ⏰ حان وقته الآن
+                        </span>
+                        {% elif appt.is_overdue %}
+                        <span
+                            class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 w-fit">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                            ⚠️ متأخر / فات وقته
+                        </span>
+                        {% elif appt.status == 'SCHEDULED' %}
+                        <span
+                            class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                            مجدول
+                        </span>
+                        {% elif appt.status == 'COMPLETED' %}
+                        <span
+                            class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700 border border-green-200">
+                            مكتمل
+                        </span>
+                        {% elif appt.status == 'CANCELLED' %}
+                        <span
+                            class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-50 text-red-700 border border-red-200">
+                            ملغى
+                        </span>
+                        {% elif appt.status == 'NO_SHOW' %}
+                        <span
+                            class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            لم يحضر
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <!-- Status Change Options -->
+                            {% if not appt.is_deleted %}
+                            {% if can_manage_appointments and appt.status == 'SCHEDULED' %}
+                            <form action="{% url 'appointments:update_status' appt.pk %}" method="POST"
+                                class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="COMPLETED">
+                                <button type="submit" title="تحديد كمكتمل"
+                                    class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                            </form>
+                            <form action="{% url 'appointments:update_status' appt.pk %}" method="POST"
+                                class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="CANCELLED">
+                                <button type="submit" title="إلغاء الموعد"
+                                    class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            <!-- Edit Button -->
+                            {% if can_manage_appointments %}
+                            <button type="button" @click="editData = {
+                                id: '{{ appt.pk }}',
+                                animal_id: '{{ appt.animal.pk }}',
+                                animal_name: '{{ appt.animal.name|escapejs }}',
+                                animal_id_code: '{{ appt.animal.animal_id|default:''|escapejs }}',
+                                client_name: '{{ appt.animal.client.full_name|default:''|escapejs }}',
+                                client_phone: '{{ appt.animal.client.phone|default:''|escapejs }}',
+                                species_display: '{{ appt.animal.get_species_display|escapejs }}',
+                                doctor_id: '{{ appt.doctor.pk }}',
+                                date: '{{ appt.date|date:'Y-m-d' }}',
+                                time: '{{ appt.time|time:'H:i' }}',
+                                duration: '{{ appt.duration }}',
+                                appointment_type: '{{ appt.appointment_type }}',
+                                status: '{{ appt.status }}',
+                                brought_by: '{{ appt.brought_by|default:''|escapejs }}',
+                                vaccine_name: '{{ appt.vaccine_name|default:''|escapejs }}',
+                                notes: '{{ appt.notes|default:''|escapejs }}'
+                            }; isChangingEditPatient = false; showEditModal = true"
+                                class="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition cursor-pointer"
+                                title="تعديل بيانات الموعد">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                            {% endif %}
+
+                            <!-- Delete Button -->
+                            {% if can_delete %}
+                            <button
+                                @click="deleteAppointmentId = '{{ appt.pk }}'; deleteAnimalName = '{{ appt.animal.name }} ({{ appt.date }} {{ appt.time|time:'H:i' }})'; showDeleteModal = true"
+                                class="text-gray-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                title="حذف مؤقت">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                            {% endif %}
+                            {% elif appt.is_deleted %}
+                            {% if can_restore %}
+                            <button
+                                @click="restoreAppointmentId = '{{ appt.pk }}'; restoreAnimalName = '{{ appt.animal.name }}'; showRestoreModal = true"
+                                class="text-emerald-700 hover:text-emerald-800 text-xs font-bold px-2 py-1 bg-emerald-50 rounded hover:bg-emerald-100 transition cursor-pointer">
+                                استعادة
+                            </button>
+                            {% endif %}
+                            {% if can_delete %}
+                            <button
+                                @click="hardDeleteId = '{{ appt.pk }}'; hardDeleteAnimalName = '{{ appt.animal.name }} ({{ appt.date }} {{ appt.time|time:'H:i' }})'; showHardDeleteModal = true"
+                                class="text-red-700 hover:text-red-800 text-xs font-bold px-2 py-1 bg-red-50 rounded hover:bg-red-100 transition cursor-pointer">
+                                حذف نهائي
+                            </button>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if filter_deleted == 'deleted' and can_delete %}8{% else %}7{% endif %}" class="px-6 py-16 text-center text-gray-400">
+                        <div class="flex flex-col items-center justify-center">
+                            <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p class="text-base font-medium text-gray-600">
+                                {% if filter_deleted == 'deleted' %}سلة المحذوفات فارغة{% else %}لا توجد مواعيد مسجلة{% endif %}
+                            </p>
+                            <p class="text-sm text-gray-400 mt-1">
+                                {% if filter_deleted == 'deleted' %}لا توجد مواعيد محذوفة مؤقتاً حالياً{% else %}قم بحجز موعد فحص للعيادة عبر الزر أعلاه{% endif %}
+                            </p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'includes/pagination.html' %}
+</div>
+

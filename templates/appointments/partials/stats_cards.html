@@ -1,0 +1,76 @@
+<!-- Stats Cards (Single Responsive Row) -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+    <!-- Today's Appointments -->
+    <div
+        class="flex items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+        <div class="p-3 ml-3 badge-brand rounded-xl shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p class="mb-0.5 text-xs font-semibold text-gray-500 truncate">مواعيد اليوم</p>
+            <p class="text-xl font-bold text-gray-900 font-mono">{{ today_count }}</p>
+        </div>
+    </div>
+
+    <!-- Scheduled Total (Mauve / Purple Accent) -->
+    <div
+        class="flex items-center p-4 bg-white rounded-2xl shadow-sm border border-purple-200 hover:shadow-md transition-all duration-200">
+        <div class="p-3 ml-3 icon-purple-stat rounded-xl shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p class="mb-0.5 text-xs font-semibold text-gray-500 truncate">إجمالي المجدولة</p>
+            <p class="text-xl font-bold text-gray-500 font-mono">{{ scheduled_count }}</p>
+        </div>
+    </div>
+
+    <!-- Completed -->
+    <div
+        class="flex items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+        <div class="p-3 ml-3 bg-green-50 text-green-600 rounded-xl shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p class="mb-0.5 text-xs font-semibold text-gray-500 truncate">مكتملة</p>
+            <p class="text-xl font-bold text-green-600 font-mono">{{ completed_count }}</p>
+        </div>
+    </div>
+
+    <!-- Cancelled -->
+    <div
+        class="flex items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+        <div class="p-3 ml-3 bg-red-50 text-red-600 rounded-xl shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p class="mb-0.5 text-xs font-semibold text-gray-500 truncate">ملغاة</p>
+            <p class="text-xl font-bold text-red-600 font-mono">{{ cancelled_count }}</p>
+        </div>
+    </div>
+
+    <!-- No-Show -->
+    <div
+        class="flex items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 col-span-2 sm:col-span-1">
+        <div class="p-3 ml-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p class="mb-0.5 text-xs font-semibold text-gray-500 truncate">لم يحضر (No-show)</p>
+            <p class="text-xl font-bold text-amber-600 font-mono">{{ no_show_count }}</p>
+        </div>
+    </div>
+</div>

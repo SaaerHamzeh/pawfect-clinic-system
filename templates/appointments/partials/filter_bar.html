@@ -1,0 +1,185 @@
+<!-- View Toggle & Professional Responsive Filter Bar with Stateful Toggle -->
+<div class="bg-white rounded-2xl shadow border border-gray-100 p-4 sm:p-5 mb-6 transition-all duration-200 hover:shadow-md">
+    <!-- Top Action Row -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3"
+        :class="filtersOpen ? 'pb-4 border-b border-gray-100' : ''">
+        <!-- Right Side (in RTL): View Switcher (Segmented Control) -->
+        <div class="inline-flex bg-slate-100/90 p-1.5 rounded-2xl shadow-inner border border-slate-200/60 w-full sm:w-auto gap-1">
+            <!-- List View Button -->
+            <button @click="currentView = 'list'"
+                :class="currentView === 'list' 
+                    ? 'bg-white text-gray-900 shadow-md font-bold scale-[1.02] hover:bg-slate-50 hover:shadow-lg' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 font-medium'"
+                class="flex-1 sm:flex-none px-4 py-2 text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer transform">
+                <svg class="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                <span>جدول المواعيد</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-gray-600 font-mono">{{ appointments.object_list|length }}</span>
+            </button>
+
+            <!-- Calendar View Button -->
+            <button @click="currentView = 'calendar'; initCalendar()"
+                :class="currentView === 'calendar' 
+                    ? 'bg-white text-gray-900 shadow-md font-bold scale-[1.02] hover:bg-slate-50 hover:shadow-lg' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 font-medium'"
+                class="flex-1 sm:flex-none px-4 py-2 text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer transform">
+                <svg class="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>التقويم التفاعلي</span>
+                <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+            </button>
+        </div>
+
+        <!-- Left Side (in RTL): Toggle Filter Bar Button -->
+        <button @click="toggleFilters()" type="button"
+            :class="filtersOpen ? 'bg-purple-50 text-purple-800 border-purple-200 shadow-inner' : 'bg-slate-50 hover:bg-slate-100 text-gray-700 border-gray-200'"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:shadow">
+            <svg class="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span x-text="filtersOpen ? 'إخفاء الفلاتر' : 'تصفية وبحث'"></span>
+            <svg :class="filtersOpen ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Collapsible Filter Fields Form (Stateful & Animated) -->
+    <div x-show="filtersOpen"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 -translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-2"
+        class="mt-4 pt-1">
+        <form method="GET" x-data="{ filterApptType: '{{ appointment_type|default:"all" }}' }">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <!-- 1. Status Filter -->
+                <div class="relative">
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">حالة الموعد</label>
+                    <div class="relative">
+                        <select name="status" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if status == 'all' or not status %}selected{% endif %}>جميع الحالات</option>
+                            <option value="SCHEDULED" {% if status == 'SCHEDULED' %}selected{% endif %}>🟣 مجدول (Scheduled)</option>
+                            <option value="COMPLETED" {% if status == 'COMPLETED' %}selected{% endif %}>🟢 مكتمل (Completed)</option>
+                            <option value="CANCELLED" {% if status == 'CANCELLED' %}selected{% endif %}>🔴 ملغى (Cancelled)</option>
+                            <option value="NO_SHOW" {% if status == 'NO_SHOW' %}selected{% endif %}>🟠 لم يحضر (No-show)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 2. Appointment Type Filter -->
+                <div class="relative">
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">نوع الموعد</label>
+                    <div class="relative">
+                        <select name="appointment_type" x-model="filterApptType" @change="$nextTick(() => { if (filterApptType !== 'VACCINATION') { $el.form.submit(); } })"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if appointment_type == 'all' or not appointment_type %}selected{% endif %}>جميع أنواع المواعيد</option>
+                            <option value="CHECKUP" {% if appointment_type == 'CHECKUP' %}selected{% endif %}>🩺 فحص دوري / استشارة</option>
+                            <option value="VACCINATION" {% if appointment_type == 'VACCINATION' %}selected{% endif %}>💉 تطعيم (Vaccination)</option>
+                            <option value="TREATMENT" {% if appointment_type == 'TREATMENT' %}selected{% endif %}>💊 علاج / متابعة</option>
+                            <option value="BATH" {% if appointment_type == 'BATH' %}selected{% endif %}>🛁 حمام وتجفيف</option>
+                            <option value="GROOMING" {% if appointment_type == 'GROOMING' %}selected{% endif %}>✂️ عناية وتنظيف</option>
+                            <option value="SURGERY" {% if appointment_type == 'SURGERY' %}selected{% endif %}>🔪 إجراء جراحي</option>
+                            <option value="EMERGENCY" {% if appointment_type == 'EMERGENCY' %}selected{% endif %}>🚨 حالة طارئة</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 3. Vaccine Name Filter (conditionally shown when VACCINATION is selected) -->
+                <div class="relative" x-show="filterApptType === 'VACCINATION' || '{{ appointment_type }}' === 'VACCINATION'" x-cloak>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">نوع التطعيم / اللقاح</label>
+                    <div class="relative">
+                        <select name="vaccine_name" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if vaccine_name == 'all' or not vaccine_name %}selected{% endif %}>جميع اللقاحات</option>
+                            {% for v in catalog_vaccines %}
+                            <option value="{{ v.name }}" {% if vaccine_name == v.name %}selected{% endif %}>{{ v.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                {% if not is_vet_user %}
+                <!-- 4. Doctor Filter -->
+                <div class="relative">
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">الطبيب المعالج</label>
+                    <div class="relative">
+                        <select name="doctor_id" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if doctor_id == 'all' or not doctor_id %}selected{% endif %}>جميع الأطباء البيطريين</option>
+                            {% for doc in doctors %}
+                            <option value="{{ doc.pk }}" {% if doctor_id == doc.pk|stringformat:"s" %}selected{% endif %}>
+                                د. {{ doc.get_full_name|default:doc.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 5. Date Filter -->
+                <div class="relative">
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">الفترة الزمنية</label>
+                    <div class="relative">
+                        <select name="date_filter" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if date_filter == 'all' or not date_filter %}selected{% endif %}>كافة التواريخ</option>
+                            <option value="today" {% if date_filter == 'today' %}selected{% endif %}>📅 اليوم</option>
+                            <option value="tomorrow" {% if date_filter == 'tomorrow' %}selected{% endif %}>غداً</option>
+                            <option value="this_week" {% if date_filter == 'this_week' %}selected{% endif %}>هذا الأسبوع</option>
+                            <option value="next_week" {% if date_filter == 'next_week' %}selected{% endif %}>الأسبوع القادم</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 6. Search Input -->
+                <div class="relative sm:col-span-2 {% if is_vet_user %}lg:col-span-2{% else %}lg:col-span-1{% endif %}">
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">بحث سريع</label>
+                    <div class="relative">
+                        <input type="text" name="q" value="{{ q }}" placeholder="ابحث باسم المريض، المالك..."
+                            class="w-full pl-8 pr-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all">
+                        
+                        {% if q %}
+                        <a href="?{% if status %}status={{ status }}&{% endif %}{% if appointment_type %}appointment_type={{ appointment_type }}&{% endif %}{% if doctor_id %}doctor_id={{ doctor_id }}&{% endif %}{% if date_filter %}date_filter={{ date_filter }}{% endif %}"
+                            class="absolute left-3 top-2.5 text-gray-400 hover:text-red-500 text-xs font-bold transition">
+                            ✕
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Actions Row (Trash Toggle & Reset) -->
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+                <!-- Trash Toggle Button -->
+                <a href="?deleted={% if filter_deleted == 'deleted' %}active{% else %}deleted{% endif %}"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition {% if filter_deleted == 'deleted' %}bg-amber-100 text-amber-900 border border-amber-300{% else %}bg-slate-100 hover:bg-slate-200 text-gray-600{% endif %}">
+                    {% if filter_deleted == 'deleted' %}
+                    {% icon 'calendar' 'w-4 h-4' %}
+                    <span>عرض المواعيد النشطة</span>
+                    {% else %}
+                    {% icon 'trash' 'w-4 h-4' %}
+                    <span>سلة المحذوفات</span>
+                    {% endif %}
+                </a>
+
+                <!-- Clear All Filters Link -->
+                {% if q or status != 'all' or doctor_id != 'all' or date_filter != 'all' or appointment_type != 'all' or vaccine_name != 'all' or filter_deleted == 'deleted' %}
+                <a href="{% url 'appointments:list' %}"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition border border-red-200">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>إلغاء جميع الفلاتر</span>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>

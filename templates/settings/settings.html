@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}الإعدادات | Pawfect Clinic{% endblock %}
+
+{% block content %}
+
+<div class="max-w-6xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-800">
+            الإعدادات
+        </h1>
+        <p class="text-gray-500 mt-1">
+            إدارة إعدادات النظام، التصنيفات والقوائم المخصصة، والمستخدمين والنسخ الاحتياطية وسجلات الرقابة
+        </p>
+    </div>
+
+    <!-- Settings Sections -->
+    <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden divide-y divide-gray-100">
+
+        <!-- Dynamic Lookups & Taxonomies (Admin only) -->
+        {% if is_admin %}
+        <a href="{% url 'settings:lookups' %}" class="w-full flex items-center px-5 py-4 text-right transition-colors text-gray-600 hover:bg-slate-50">
+            <div class="flex-shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center ml-3 font-bold">
+                    {% icon 'layers' 'w-5 h-5' %}
+                </div>
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center gap-2">
+                    <p class="font-semibold text-sm text-gray-800">
+                        إدارة القوائم والتصنيفات المخصصة
+                    </p>
+                </div>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    تخصيص وإضافة فصائل وسلالات الحيوانات، أنواع الزيارات السريرية، المواعيد، وكتالوج اللقاحات
+                </p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endif %}
+
+        <!-- Users (Admin only) -->
+        {% if is_admin %}
+        <a href="{% url 'settings:users' %}" class="w-full flex items-center px-5 py-4 text-right transition-colors text-gray-600 hover:bg-slate-50">
+            <div class="flex-shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center ml-3 font-bold">
+                    {% icon 'user' 'w-5 h-5' %}
+                </div>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold text-sm text-gray-800">
+                    المستخدمون والصلاحيات الفردية
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    إدارة الحسابات وتعيين صلاحيات الوصول والعمليات بدقة
+                </p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endif %}
+
+        <!-- Backups -->
+        {% if can_backup_restore %}
+        <a href="{% url 'settings:backups' %}" class="w-full flex items-center px-5 py-4 text-right transition-colors text-gray-600 hover:bg-slate-50">
+            <div class="flex-shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center ml-3 font-bold">
+                    {% icon 'download' 'w-5 h-5' %}
+                </div>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold text-sm text-gray-800">
+                    النسخ الاحتياطية
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    إنشاء وإدارة واستعادة النسخ الاحتياطية
+                </p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endif %}
+
+        <!-- Audit Logs (Admin only) -->
+        {% if is_admin %}
+        <a href="{% url 'settings:audit_logs' %}" class="w-full flex items-center px-5 py-4 text-right transition-colors text-gray-600 hover:bg-slate-50">
+            <div class="flex-shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center ml-3 font-bold">
+                    {% icon 'clipboard-list' 'w-5 h-5' %}
+                </div>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold text-sm text-gray-800">
+                    سجل العمليات والرقابة (Audit Log)
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    متابعة جميع العمليات وحركات النظام بدقة
+                </p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

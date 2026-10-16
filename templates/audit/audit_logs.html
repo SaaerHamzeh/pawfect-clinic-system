@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}سجل العمليات | Pawfect Clinic{% endblock %}
+
+{% block content %}
+
+<div x-data="{
+    ...(typeof window.filterController === 'function' ? window.filterController('audit_logs') : { filtersOpen: true, toggleFilters() { this.filtersOpen = !this.filtersOpen; } })
+}" class="max-w-6xl mx-auto">
+
+<div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">سجل العمليات</h1>
+        <p class="text-gray-500 mt-1">تتبع العمليات التي تمت داخل النظام والأنشطة الأمنية</p>
+    </div>
+    <a href="{% url 'settings:index' %}" class="inline-flex items-center text-sm text-gray-600 hover:text-primary-600 font-medium">
+        <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        العودة للإعدادات
+    </a>
+</div>
+
+<!-- Collapsible Filters Bar -->
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 mb-6 transition-all duration-200 hover:shadow-md">
+    <!-- Top Action Row -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3"
+        :class="filtersOpen ? 'pb-4 border-b border-gray-100' : ''">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+            </div>
+            <span class="text-sm font-bold text-gray-800">البحث وتصفية سجل التدقيق</span>
+        </div>
+
+        <!-- Toggle Filter Button -->
+        <button @click="toggleFilters()" type="button"
+            :class="filtersOpen ? 'bg-primary-50 text-primary-800 border-primary-200 shadow-inner' : 'bg-slate-50 hover:bg-slate-100 text-gray-700 border-gray-200'"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:shadow">
+            <svg class="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span x-text="filtersOpen ? 'إخفاء الفلاتر' : 'تصفية وبحث'"></span>
+            <svg :class="filtersOpen ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Collapsible Form -->
+    <div x-show="filtersOpen"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 -translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-2"
+        class="mt-4 pt-1">
+        <form method="GET">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <!-- Search Query -->
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">بحث سريع</label>
+                    <input type="text" name="q" value="{{ selected_q }}" placeholder="بحث بالوصف، المعرف، IP..."
+                        class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all">
+                </div>
+
+                <!-- User Filter -->
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">المستخدم المسؤول</label>
+                    <select name="user_id" onchange="this.form.submit()"
+                        class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                        <option value="">جميع المستخدمين</option>
+                        {% for u in users_list %}
+                            <option value="{{ u.pk }}" {% if selected_user == u.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ u.get_full_name|default:u.username }} ({{ u.get_role_display }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Action Filter -->
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">نوع العملية</label>
+                    <select name="action" onchange="this.form.submit()"
+                        class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                        <option value="">جميع العمليات</option>
+                        {% for act_val, act_label in actions %}
+                            <option value="{{ act_val }}" {% if selected_action == act_val %}selected{% endif %}>{{ act_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Date Filter -->
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1">التاريخ</label>
+                    <input type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()"
+                        class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Bottom Actions Row -->
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+                <button type="submit"
+                    class="btn-search px-5 py-2 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition cursor-pointer">
+                    بحث وتطبيق
+                </button>
+
+                {% if selected_q or selected_user or selected_action or selected_date %}
+                <a href="{% url 'settings:audit_logs' %}"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition border border-red-200">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>إلغاء جميع الفلاتر</span>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-800">العمليات المسجلة</h2>
+        <span class="text-xs bg-slate-100 text-gray-600 px-3 py-1 rounded-full font-medium">إجمالي: {{ logs|length }}</span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-right whitespace-nowrap">
+            <thead>
+                <tr class="bg-slate-50 text-gray-500 text-xs uppercase font-semibold">
+                    <th class="px-6 py-3.5">التاريخ والوقت</th>
+                    <th class="px-6 py-3.5">المستخدم</th>
+                    <th class="px-6 py-3.5">العملية</th>
+                    <th class="px-6 py-3.5">المورد / الكيان</th>
+                    <th class="px-6 py-3.5">التفاصيل</th>
+                    <th class="px-6 py-3.5">عنوان IP</th>
+                </tr>
+            </thead>
+
+            <tbody class="divide-y divide-gray-100 text-sm">
+                {% for log in logs %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <!-- Date & Time -->
+                        <td class="px-6 py-4 text-gray-600 dir-ltr text-right font-mono text-xs">
+                            {{ log.timestamp|date:"Y-m-d H:i:s" }}
+                        </td>
+
+                        <!-- User -->
+                        <td class="px-6 py-4 font-medium text-gray-800">
+                            {% if log.user %}
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs">
+                                        {{ log.user.username|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <span class="block">{{ log.user.get_full_name|default:log.user.username }}</span>
+                                        <span class="text-xs text-gray-400 font-normal">({{ log.user.get_role_display }})</span>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <span class="text-gray-400 italic">النظام / غير مسجل</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Action -->
+                        <td class="px-6 py-4">
+                            {% if log.action == 'CREATE' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700 border border-green-200">
+                                    إنشاء
+                                </span>
+                            {% elif log.action == 'UPDATE' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                    تعديل
+                                </span>
+                            {% elif log.action == 'DELETE' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-50 text-red-700 border border-red-200">
+                                    حذف
+                                </span>
+                            {% elif log.action == 'RESTORE' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                    استعادة
+                                </span>
+                            {% elif log.action == 'LOGIN' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                                    تسجيل دخول
+                                </span>
+                            {% elif log.action == 'LOGOUT' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                    تسجيل خروج
+                                </span>
+                            {% else %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                    {{ log.get_action_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Entity -->
+                        <td class="px-6 py-4 text-gray-700">
+                            <span class="font-medium">{{ log.entity_type }}</span>
+                            {% if log.entity_id %}
+                                <span class="text-xs text-gray-400 font-mono">#{{ log.entity_id }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Description -->
+                        <td class="px-6 py-4 text-gray-600 max-w-xs truncate" title="{{ log.description }}">
+                            {{ log.description|default:"-" }}
+                        </td>
+
+                        <!-- IP Address -->
+                        <td class="px-6 py-4 text-gray-500 font-mono text-xs dir-ltr text-right">
+                            {{ log.ip_address|default:"127.0.0.1" }}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-16 text-center text-gray-400">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p class="text-base font-medium text-gray-600">لا توجد عمليات مطابقة</p>
+                                <p class="text-sm text-gray-400 mt-1">لم يتم تسجيل عمليات بعد أو لا توجد نتائج لخيارات التصفية الحالية</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'includes/pagination.html' %}
+</div>
+
+</div>
+{% endblock %}

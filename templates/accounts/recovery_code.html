@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>رمز استعادة كلمة المرور | Pawfect Clinic</title>
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <link href="{% static 'css/theme.css' %}?v=6" rel="stylesheet">
+    <script src="{% static 'js/alpine.min.js' %}" defer></script>
+</head>
+
+<body class="login-page-bg min-h-screen flex items-center justify-center p-4 font-sans text-slate-800 antialiased"
+      x-data="{ copied: false }">
+    <div class="w-full max-w-lg my-6">
+        <div class="login-card bg-white border border-gray-100">
+            <div class="theme-brand-bg px-8 py-6 text-center text-white">
+                <img src="{% static 'images/logo-white.png' %}" alt="Pawfect Clinic" class="h-12 w-auto mx-auto object-contain drop-shadow-md" />
+            </div>
+            <div class="p-8">
+                <h2 class="text-base font-bold text-gray-800 mb-2">احفظ رمز استعادة كلمة المرور</h2>
+                <p class="text-xs text-gray-500 mb-5 leading-6">
+                    هذا الرمز يظهر مرة واحدة. احتفظ به خارج الجهاز (ورقة أو USB). ستحتاجه من صفحة الدخول إذا نسيت كلمة مرور المدير.
+                </p>
+                <div class="bg-slate-50 border border-dashed border-slate-300 rounded-2xl px-4 py-5 text-center mb-4">
+                    <p class="text-[11px] text-gray-400 mb-2">رمز الاستعادة</p>
+                    <p id="recovery-code-value" class="text-2xl font-black tracking-[0.25em] text-primary-800 dir-ltr" dir="ltr">{{ recovery_code }}</p>
+                </div>
+                <button type="button"
+                    @click="navigator.clipboard.writeText('{{ recovery_code|escapejs }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                    class="w-full mb-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                    <span x-show="!copied">نسخ الرمز</span>
+                    <span x-show="copied" x-cloak class="text-emerald-700">تم النسخ</span>
+                </button>
+                <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3 mb-5">
+                    لا تشارك الرمز مع الاستقبال إلا عند الحاجة. يمكنك توليد رمز جديد لاحقاً من صفحة المستخدمين.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="w-full py-3 px-4 btn-save text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg cursor-pointer">
+                        حفظت الرمز، متابعة إلى النظام
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

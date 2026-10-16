@@ -1,0 +1,63 @@
+{% if page_obj.has_other_pages %}
+<div class="px-6 py-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 select-none">
+    <div class="text-xs text-gray-500 text-center sm:text-right">
+        عرض <span class="font-bold text-gray-800">{{ page_obj.start_index }}</span> إلى <span class="font-bold text-gray-800">{{ page_obj.end_index }}</span> من إجمالي <span class="font-bold text-gray-800">{{ page_obj.paginator.count }}</span> سجل
+    </div>
+
+    <div class="flex items-center gap-1.5">
+        <!-- First & Previous -->
+        {% if page_obj.has_previous %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}page=1"
+            class="px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition shadow-sm" title="الصفحة الأولى">
+            ««
+        </a>
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+            class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition shadow-sm flex items-center gap-1">
+            <span>السابق</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+        {% else %}
+        <span class="px-3 py-1.5 text-xs font-semibold text-gray-400 bg-gray-50 border border-gray-100 rounded-lg cursor-not-allowed">
+            السابق
+        </span>
+        {% endif %}
+
+        <!-- Page Numbers -->
+        <div class="flex items-center gap-1">
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="px-3 py-1.5 text-xs font-bold text-white theme-brand-bg rounded-lg shadow-sm">
+                    {{ num }}
+                </span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}page={{ num }}"
+                    class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition shadow-sm">
+                    {{ num }}
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Next & Last -->
+        {% if page_obj.has_next %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+            class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition shadow-sm flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            <span>التالي</span>
+        </a>
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}"
+            class="px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition shadow-sm" title="الصفحة الأخيرة">
+            »»
+        </a>
+        {% else %}
+        <span class="px-3 py-1.5 text-xs font-semibold text-gray-400 bg-gray-50 border border-gray-100 rounded-lg cursor-not-allowed">
+            التالي
+        </span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

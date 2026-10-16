@@ -1,0 +1,259 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{% if is_admin %}admin{% elif is_vet %}vet{% else %}staff{% endif %}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pawfect Clinic{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
+
+    <!-- CSS -->
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <link href="{% static 'css/theme.css' %}?v=8" rel="stylesheet">
+
+    <!-- JS -->
+    <script src="{% static 'js/filter-toggle.js' %}"></script>
+    <script src="{% static 'js/htmx.min.js' %}" defer></script>
+    <script src="{% static 'js/alpine.min.js' %}" defer></script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="flex h-screen h-[100dvh] overflow-hidden text-slate-800 font-sans antialiased theme-app-bg"
+    data-theme="{% if is_admin %}admin{% elif is_vet %}vet{% else %}staff{% endif %}"
+    x-data="{ sidebarOpen: false }">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div x-show="sidebarOpen" class="fixed inset-0 z-20 transition-opacity bg-black opacity-50 lg:hidden"
+        @click="sidebarOpen = false"></div>
+
+    <!-- Sidebar -->
+    <div :class="sidebarOpen ? 'translate-x-0 ease-out' : 'translate-x-full ease-in'"
+        class="fixed inset-y-0 right-0 z-30 w-64 overflow-y-auto transition duration-300 transform bg-white border-l border-gray-200 lg:translate-x-0 lg:static lg:inset-0 flex flex-col justify-between shadow-sm">
+        <div>
+            <!-- Logo & Clinic Brand Header -->
+            <div class="theme-brand-bg text-white shadow-sm px-4 py-2 border-b border-white/10 flex items-center justify-center">
+                <a href="{% url 'core:dashboard' %}" class="flex items-center justify-center py-1 px-2 rounded-xl transition-all duration-200 focus:outline-none">
+                    <img src="{% static 'images/logo-white.png' %}" alt="Pawfect Clinic" class="h-11 w-auto max-w-[185px] object-contain drop-shadow-sm" />
+                </a>
+            </div>
+
+            <!-- Navigation Links with Clear Spacing and Active Highlighting -->
+            <nav class="mt-6 px-3.5 space-y-3">
+                <!-- Dashboard -->
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.url_name == 'dashboard' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'core:dashboard' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    <span>لوحة التحكم</span>
+                </a>
+
+                <!-- Appointments -->
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'appointments' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'appointments:list' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>المواعيد والتقويم</span>
+                </a>
+
+                <!-- Clients -->
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'clients' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'clients:list' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span>العملاء (المربون)</span>
+                </a>
+
+                <!-- Patients -->
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'patients' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'patients:list' %}">
+                    <svg class="w-5 h-5 ml-3" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 14c-2.4 0-4 1.5-4 3.2 0 1.8 1.6 3.3 4 3.3s4-1.5 4-3.3c0-1.7-1.6-3.2-4-3.2zm-4.3-2.1c.9 0 1.6-1.1 1.6-2.4 0-1.4-.7-2.5-1.6-2.5s-1.6 1.1-1.6 2.5c0 1.3.7 2.4 1.6 2.4zm8.6 0c.9 0 1.6-1.1 1.6-2.4 0-1.4-.7-2.5-1.6-2.5s-1.6 1.1-1.6 2.5c0 1.3.7 2.4 1.6 2.4zm-6.1-2.5c.9 0 1.6-1.2 1.6-2.6 0-1.5-.7-2.7-1.6-2.7s-1.6 1.2-1.6 2.7c0 1.4.7 2.6 1.6 2.6zm3.6 0c.9 0 1.6-1.2 1.6-2.6 0-1.5-.7-2.7-1.6-2.7s-1.6 1.2-1.6 2.7c0 1.4.7 2.6 1.6 2.6z"/>
+                    </svg>
+                    <span>المرضى (الحيوانات)</span>
+                </a>
+
+                <!-- Clinical Records -->
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'clinical' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'clinical:list' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>السجلات والزيارات السريرية</span>
+                </a>
+
+                <!-- Reminders -->
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'reminders' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'reminders:list' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>التذكيرات</span>
+                </a>
+
+                <!-- Reports -->
+                {% if can_view_reports %}
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'reports' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'reports:list' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>التقارير وتصدير Excel</span>
+                </a>
+                {% endif %}
+
+                <!-- Settings -->
+                {% if can_access_settings %}
+                <div class="border-t border-gray-200 my-3"></div>
+
+                <a class="flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 text-sm {% if request.resolver_match.app_name == 'settings' %}theme-nav-active font-bold{% else %}theme-nav-inactive font-medium{% endif %}"
+                    href="{% url 'settings:index' %}">
+                    <svg class="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>الإعدادات</span>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <div class="p-4 border-t border-gray-200 text-xs text-gray-400 text-center">
+            نظام العيادة البيطرية • محلي (Offline)
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex flex-col flex-1 overflow-hidden theme-app-bg">
+        <!-- Top Bar -->
+        <header class="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 focus:outline-none lg:hidden">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 6H20M4 12H20M4 18H11" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
+            
+
+                <!-- Role Badge Indicator -->
+                {% if is_admin %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300 shadow-sm">
+                    {% icon 'shield-check' 'w-4 h-4' %} لوحة مدير النظام
+                </span>
+                {% elif is_vet %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-900 border border-sky-300 shadow-sm">
+                    {% icon 'stethoscope' 'w-4 h-4' %} بوابة الطبيب البيطري
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-sm">
+                    {% icon 'clipboard-list' 'w-4 h-4' %} مكتب الاستقبال
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Real-Time Digital Clock (Offline & Localized) -->
+            <div x-data="{
+                timeStr: '',
+                ampmStr: '',
+                dateStr: '',
+                updateTime() {
+                    const now = new Date();
+                    let hours = now.getHours();
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    this.ampmStr = hours >= 12 ? 'م' : 'ص';
+                    hours = hours % 12;
+                    hours = hours ? String(hours).padStart(2, '0') : '12';
+                    this.timeStr = hours + ':' + minutes + ':' + seconds;
+
+                    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                    const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+                    const dayName = days[now.getDay()];
+                    const dayNum = now.getDate();
+                    const monthName = months[now.getMonth()];
+                    const year = now.getFullYear();
+                    this.dateStr = dayName + '، ' + dayNum + ' ' + monthName + ' ' + year;
+                },
+                init() {
+                    this.updateTime();
+                    setInterval(() => { this.updateTime(); }, 1000);
+                }
+            }" class="flex items-center justify-center">
+                <div class="flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-1.5 bg-slate-50/90 hover:bg-slate-100/90 border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-200">
+                    <!-- Live Pulsing Indicator -->
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+
+                    <!-- Clock Icon -->
+                    <svg class="w-4 h-4 text-slate-500 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+
+                    <!-- Time (Fixed width monospaced to prevent jitter) -->
+                    <div class="flex items-baseline gap-1" dir="ltr">
+                        <span x-text="timeStr" class="font-mono text-sm sm:text-base font-extrabold text-slate-800 tracking-wider"></span>
+                        <span x-text="ampmStr" class="text-[11px] font-bold text-slate-600"></span>
+                    </div>
+
+                    <!-- Date Divider & Display (Hidden on very small screens, visible on md+) -->
+                    <div class="hidden md:flex items-center gap-2 border-r border-slate-200 pr-2.5 mr-1 text-slate-600 text-xs font-medium">
+                        <span x-text="dateStr"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-9 h-9 rounded-full theme-brand-bg text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                        {% if user.is_authenticated %}{{ user.username|make_list|first|upper }}{% else %}A{% endif %}
+                    </div>
+                    <div class="hidden md:block text-right">
+                        <p class="font-semibold text-sm text-gray-800">
+                            {% if user.is_authenticated %}{{ user.get_full_name|default:user.username }}{% else %}المدير المسؤول{% endif %}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            {% if is_admin %}مدير النظام (Admin){% elif is_vet %}طبيب بيطري (Vet){% else %}موظف استقبال (Staff){% endif %}
+                        </p>
+                    </div>
+
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'accounts:logout' %}" title="تسجيل الخروج" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition mr-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content Area -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto theme-app-bg">
+            <div class="container px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 mx-auto page-content-container">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

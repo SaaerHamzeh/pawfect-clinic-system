@@ -1,0 +1,488 @@
+/* ==========================================================================
+   Pawfect Clinic - Dynamic Role Themes & Global Theme Overrides
+   Official Pawfect Brand Palette (Teal #1099a7 & Mauve/Purple #ba8cd9)
+   ========================================================================== */
+
+/* 1. Admin Theme - Deep Brand Teal & Rich Mauve Accents */
+[data-theme="admin"], html[data-theme="admin"], body[data-theme="admin"] {
+    --color-brand: #0e8794;
+    --color-brand-hover: #096f7b;
+    --color-brand-light: #e6f7f9;
+    --color-brand-light-hover: #d0f0f4;
+    --color-brand-border: #7ed4dd;
+    --color-accent-purple: #9b5ec9;
+    --color-accent-purple-hover: #8343b2;
+    --color-accent-purple-light: #f5edfa;
+    --color-accent-purple-border: #d8b4fe;
+    --color-app-bg: #f0daff;
+}
+
+/* 2. Vet Theme - Pure Medical Turquoise & Mauve Accents */
+[data-theme="vet"], html[data-theme="vet"], body[data-theme="vet"] {
+    --color-brand: #1099a7;
+    --color-brand-hover: #0d828e;
+    --color-brand-light: #eef9fa;
+    --color-brand-light-hover: #d8f3f6;
+    --color-brand-border: #8de0e9;
+    --color-accent-purple: #9b5ec9;
+    --color-accent-purple-hover: #8343b2;
+    --color-accent-purple-light: #f5edfa;
+    --color-accent-purple-border: #d8b4fe;
+    --color-app-bg: #faf3ff;
+}
+
+/* 3. Staff Theme - Warm Teal & Vibrant Purple Accents */
+[data-theme="staff"], html[data-theme="staff"], body[data-theme="staff"] {
+    --color-brand: #14919f;
+    --color-brand-hover: #0e7884;
+    --color-brand-light: #e9f7f8;
+    --color-brand-light-hover: #d2f0f2;
+    --color-brand-border: #7cd2dc;
+    --color-accent-purple: #9b5ec9;
+    --color-accent-purple-hover: #8343b2;
+    --color-accent-purple-light: #f5edfa;
+    --color-accent-purple-border: #d8b4fe;
+    --color-app-bg: #faf3ff;
+}
+
+/* Fallback default */
+:root {
+    --color-brand: #1099a7;
+    --color-brand-hover: #0c7c87;
+    --color-brand-light: #e8f7f9;
+    --color-brand-light-hover: #d2f1f5;
+    --color-brand-border: #80d6e0;
+    --color-accent-purple: #9b5ec9;
+    --color-accent-purple-hover: #8343b2;
+    --color-accent-purple-light: #f5edfa;
+    --color-accent-purple-border: #d8b4fe;
+    --color-app-bg: #eef8f9;
+}
+
+/* Base Structural Backgrounds & Viewport Fixes */
+html, body {
+    height: 100%;
+    height: 100vh;
+    height: 100dvh;
+}
+
+body.h-screen {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+html, body, main {
+    background-color: var(--color-app-bg) !important;
+}
+
+.theme-app-bg {
+    background-color: var(--color-app-bg) !important;
+}
+
+main.theme-app-bg {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+
+.page-content-container {
+    padding-bottom: max(5rem, calc(3rem + env(safe-area-inset-bottom, 0px))) !important;
+}
+
+/* Brand Theme Classes */
+.theme-brand-bg {
+    background: linear-gradient(135deg, var(--color-brand) 0%, #1099a7 50%, var(--color-accent-purple) 100%) !important;
+}
+
+.theme-brand-bg-solid {
+    background-color: var(--color-brand) !important;
+}
+
+.theme-brand-bg:hover {
+    background: linear-gradient(135deg, var(--color-brand-hover) 0%, #0d8491 50%, var(--color-accent-purple-hover) 100%) !important;
+}
+
+.theme-brand-text {
+    color: var(--color-brand) !important;
+}
+
+.theme-nav-active {
+    background: linear-gradient(90deg, var(--color-brand) 0%, #0d8491 70%, var(--color-accent-purple) 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 14px -1px rgba(16, 153, 167, 0.4) !important;
+}
+
+.theme-nav-inactive {
+    color: #475569 !important;
+}
+
+.theme-nav-inactive:hover {
+    background-color: var(--color-brand-light-hover) !important;
+    color: var(--color-brand) !important;
+}
+
+/* ==========================================================================
+   Buttons & Action Elements (Mauve / Purple & Brand Palette)
+   ========================================================================== */
+
+/* ==========================================================================
+   Standardized Unified Button Classes
+   ========================================================================== */
+
+/* 1. Create & Add Buttons (Purple / Mauve #9b5ec9) */
+.btn-create,
+.btn-purple {
+    background-color: #9b5ec9 !important;
+    color: #ffffff !important;
+    border-color: #9b5ec9 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-create:hover,
+.btn-purple:hover {
+    background-color: #8343b2 !important;
+    color: #ffffff !important;
+    border-color: #8343b2 !important;
+    box-shadow: 0 4px 14px rgba(155, 94, 201, 0.4) !important;
+}
+
+/* 2. Submit & Save Buttons (Brand Medical Teal #1099a7) */
+.btn-save,
+.btn-submit,
+.btn-primary,
+.bg-primary-600 {
+    background-color: #1099a7 !important;
+    color: #ffffff !important;
+    border-color: #1099a7 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-save:hover,
+.btn-submit:hover,
+.btn-primary:hover,
+.bg-primary-600:hover,
+.hover\:bg-primary-700:hover {
+    background-color: #0c7c87 !important;
+    color: #ffffff !important;
+    border-color: #0c7c87 !important;
+    box-shadow: 0 4px 14px rgba(16, 153, 167, 0.4) !important;
+}
+
+/* 3. Search & Filter Apply Buttons (Teal #0d9488) */
+.btn-search,
+.btn-filter,
+.btn-teal {
+    background-color: #0d9488 !important;
+    color: #ffffff !important;
+    border-color: #0d9488 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-search:hover,
+.btn-filter:hover,
+.btn-teal:hover {
+    background-color: #0f766e !important;
+    color: #ffffff !important;
+    border-color: #0f766e !important;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35) !important;
+}
+
+/* 4. Export & Excel Download Buttons (Emerald #059669) */
+.btn-export,
+.btn-excel {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-export:hover,
+.btn-excel:hover {
+    background-color: #047857 !important;
+    color: #ffffff !important;
+    border-color: #047857 !important;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35) !important;
+}
+
+/* 5. Cancel & Dismiss Buttons (Clean Neutral White/Gray) */
+.btn-cancel,
+.btn-secondary {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border: 1px solid #d1d5db !important;
+    font-weight: 600 !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+.btn-cancel:hover,
+.btn-secondary:hover {
+    background-color: #f9fafb !important;
+    border-color: #9ca3af !important;
+    color: #111827 !important;
+}
+
+/* 6. Danger & Delete Modal Action Buttons (Red #dc2626) */
+.btn-danger,
+.btn-delete-confirm {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-danger:hover,
+.btn-delete-confirm:hover {
+    background-color: #b91c1c !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
+}
+
+/* 7. Restore Buttons (Emerald #059669) */
+.btn-restore-confirm {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-restore-confirm:hover {
+    background-color: #047857 !important;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35) !important;
+}
+
+/* 8. Table Action Icons Standardization */
+.action-icon-edit {
+    color: #9333ea !important;
+}
+.action-icon-edit:hover {
+    background-color: #faf5ff !important;
+    color: #6b21a8 !important;
+}
+
+.action-icon-view {
+    color: #0d9488 !important;
+}
+.action-icon-view:hover {
+    background-color: #f0fdfa !important;
+    color: #0f766e !important;
+}
+
+.action-icon-convert {
+    color: #4f46e5 !important;
+}
+.action-icon-convert:hover {
+    background-color: #eef2ff !important;
+    color: #3730a3 !important;
+}
+
+.action-icon-delete {
+    color: #9ca3af !important;
+}
+.action-icon-delete:hover {
+    background-color: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+
+.action-icon-restore {
+    color: #059669 !important;
+}
+.action-icon-restore:hover {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+}
+
+.action-icon-hard-delete {
+    color: #dc2626 !important;
+}
+.action-icon-hard-delete:hover {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+/* Light Backgrounds */
+.bg-primary-50 {
+    background-color: var(--color-brand-light) !important;
+}
+
+.bg-primary-100 {
+    background-color: var(--color-brand-light-hover) !important;
+}
+
+.text-primary-600,
+.text-primary-700 {
+    color: var(--color-brand) !important;
+}
+
+.text-primary-800,
+.text-primary-900 {
+    color: var(--color-brand-hover) !important;
+}
+
+.border-primary-200,
+.border-primary-300 {
+    border-color: var(--color-brand-border) !important;
+}
+
+.border-primary-500, 
+.border-primary-600 {
+    border-color: var(--color-brand) !important;
+}
+
+.focus\:border-primary-500:focus {
+    border-color: var(--color-brand) !important;
+    box-shadow: 0 0 0 3px rgba(16, 153, 167, 0.25) !important;
+}
+
+/* Purple Badges & Highlights */
+.badge-purple {
+    background-color: #f5edfa !important;
+    color: #8343b2 !important;
+    border: 1px solid #d8b4fe !important;
+}
+
+.badge-brand {
+    background-color: #e6f7f9 !important;
+    color: #0e8794 !important;
+    border: 1px solid #7ed4dd !important;
+}
+
+.bg-accent-purple,
+.bg-purple-active {
+    background-color: #9b5ec9 !important;
+    color: #ffffff !important;
+}
+
+.text-accent-purple {
+    color: #8343b2 !important;
+}
+
+.card-purple-stat {
+    background-color: #fcf8fe !important;
+    border: 1px solid #e9d5ff !important;
+}
+
+.icon-purple-stat {
+    background-color: #f3e8ff !important;
+    color: #9333ea !important;
+}
+
+.text-purple-stat {
+    color: #9333ea !important;
+}
+
+.card-teal-stat {
+    background-color: #e6f7f9 !important;
+    border: 1px solid #7ed4dd !important;
+}
+
+.icon-teal-stat {
+    background-color: #e6f7f9 !important;
+    color: #1099a7 !important;
+}
+
+.text-teal-stat {
+    color: #1099a7 !important;
+}
+
+.btn-teal {
+    background-color: #0d9488 !important;
+    color: #ffffff !important;
+}
+
+.btn-teal:hover {
+    background-color: #0f766e !important;
+}
+
+.btn-view-toggle-active {
+    background-color: #9b5ec9 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Table and Card Borders */
+.table-brand-header th {
+    background-color: var(--color-brand-light) !important;
+    color: var(--color-brand) !important;
+}
+
+/* Dedicated Login Card Styling */
+.login-page-bg {
+    background: linear-gradient(135deg, #f1f5f9 0%, #eef9fa 50%, #e2e8f0 100%) !important;
+}
+
+.login-card {
+    border-radius: 1.5rem !important;
+    box-shadow: 0 20px 35px -5px rgba(15, 42, 58, 0.15), 0 10px 10px -5px rgba(15, 42, 58, 0.04) !important;
+    overflow: hidden !important;
+}
+
+.login-logo-container {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-radius: 1rem !important;
+    padding: 0.75rem 1.25rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* FullCalendar Purple & Brand Harmonization */
+.fc .fc-button-primary {
+    background-color: #9b5ec9 !important;
+    border-color: #9b5ec9 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-radius: 0.6rem !important;
+}
+
+.fc .fc-button-primary:hover,
+.fc .fc-button-primary:focus {
+    background-color: #813db5 !important;
+    border-color: #813db5 !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+    background-color: #6e2e9e !important;
+    border-color: #6e2e9e !important;
+}
+
+/* ==========================================================================
+   Universal Modal Tablet & Touch Devices Centering Fix
+   Prevents sm:h-screen span from pushing modals down 100vh on tablets
+   ========================================================================== */
+[x-cloak] {
+    display: none !important;
+}
+
+.fixed.z-50.overflow-y-auto > div[class*="min-h-screen"],
+.fixed.inset-0.z-50.overflow-y-auto > div[class*="min-h-screen"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+}
+
+.fixed.z-50.overflow-y-auto > div[class*="min-h-screen"] > span[class*="h-screen"],
+.fixed.inset-0.z-50.overflow-y-auto > div[class*="min-h-screen"] > span[class*="h-screen"] {
+    display: none !important;
+}
+
+.fixed.z-50.overflow-y-auto > div[class*="min-h-screen"] > div[class*="rounded-2xl"],
+.fixed.z-50.overflow-y-auto > div[class*="min-h-screen"] > div[class*="rounded-xl"],
+.fixed.inset-0.z-50.overflow-y-auto > div[class*="min-h-screen"] > div[class*="rounded-2xl"],
+.fixed.inset-0.z-50.overflow-y-auto > div[class*="min-h-screen"] > div[class*="rounded-xl"] {
+    position: relative !important;
+    z-index: 20 !important;
+    width: 100% !important;
+    margin: auto !important;
+}
+

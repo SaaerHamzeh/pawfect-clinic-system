@@ -1,0 +1,87 @@
+<!-- Single Hard Delete Confirmation Modal -->
+<div x-show="showHardDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div @click="showHardDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+        <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+            <form :action="'/appointments/' + hardDeleteId + '/hard-delete/'" method="POST">
+                {% csrf_token %}
+                <div class="bg-white p-6">
+                    <div class="flex items-center gap-3 mb-4 text-red-600">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف النهائي (قطعي)</h3>
+                    </div>
+
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        هل أنت متأكد من الحذف النهائي للموعد <strong class="text-gray-900" x-text="hardDeleteAnimalName"></strong>؟
+                        <br>
+                        <span class="text-xs text-red-600 font-bold mt-2 block bg-red-50 p-2.5 rounded-lg border border-red-200">
+                            ⚠️ تحذير: سيتم حذف هذا الموعد نهائياً من قاعدة البيانات ولن يكون بالإمكان استعادته أبداً.
+                        </span>
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                    <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white shadow-sm transition cursor-pointer">
+                        نعم، حذف نهائي
+                    </button>
+                    <button type="button" @click="showHardDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Hard Delete Confirmation Modal -->
+<div x-show="showBulkHardDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div @click="showBulkHardDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+        <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+            <form action="{% url 'appointments:bulk_hard_delete' %}" method="POST">
+                {% csrf_token %}
+                <template x-for="id in selectedIds" :key="id">
+                    <input type="hidden" name="selected_ids" :value="id">
+                </template>
+
+                <div class="bg-white p-6">
+                    <div class="flex items-center gap-3 mb-4 text-red-600">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف النهائي للمحددة</h3>
+                    </div>
+
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        أنت على وشك حذف <strong class="text-red-700 font-mono text-base" x-text="selectedIds.length"></strong> مواعيد محددة نهائياً من سلة المحذوفات.
+                        <br>
+                        <span class="text-xs text-red-600 font-bold mt-2 block bg-red-50 p-2.5 rounded-lg border border-red-200">
+                            ⚠️ تنبيه حرج: هذا الإجراء لا يمكن الرجوع عنه، وسيتم مسح كافة المواعيد المحددة نهائياً.
+                        </span>
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                    <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white shadow-sm transition cursor-pointer">
+                        حذف نهائي للكل المحدد
+                    </button>
+                    <button type="button" @click="showBulkHardDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

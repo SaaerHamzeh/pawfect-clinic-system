@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}الصفحة غير موجودة (404) | Pawfect Clinic{% endblock %}
+
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full text-center bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl mx-auto flex items-center justify-center text-3xl font-bold mb-4">
+            🔍
+        </div>
+
+        <h1 class="text-xl font-bold text-gray-900 mb-2">الصفحة غير موجودة (404)</h1>
+        <p class="text-sm text-gray-500 mb-6 leading-relaxed">
+            العنصر أو الصفحة التي تحاول الوصول إليها غير متوفرة، أو ربما تم حذفها أو نقلها.
+        </p>
+
+        <a href="{% url 'core:dashboard' %}"
+            class="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg shadow-sm transition">
+            العودة للوحة التحكم الرئيسية
+        </a>
+    </div>
+</div>
+{% endblock %}

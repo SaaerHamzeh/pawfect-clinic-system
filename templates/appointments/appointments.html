@@ -1,0 +1,578 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}المواعيد والتقويم | Pawfect Clinic{% endblock %}
+
+{% block extra_head %}
+<!-- FullCalendar Offline Local Assets -->
+<link href="{% static 'css/calendar.css' %}?v=19" rel="stylesheet">
+<script src="{% static 'js/fullcalendar.js' %}?v=6"></script>
+<script src="{% static 'js/fullcalendar-locales.js' %}?v=6"></script>
+{% endblock %}
+
+{% block content %}
+<script>
+let calendarTooltipEl = null;
+
+function showCalendarTooltip(event, el) {
+    if (!calendarTooltipEl) {
+        calendarTooltipEl = document.createElement('div');
+        calendarTooltipEl.id = 'fc-event-tooltip';
+        calendarTooltipEl.className = 'fc-hover-tooltip';
+        document.body.appendChild(calendarTooltipEl);
+    }
+
+    const p = event.extendedProps || {};
+    const animal = p.animal_name || 'غير محدد';
+    const species = p.species ? `(${p.species})` : '';
+    const client = p.client_name || '-';
+    const phone = p.client_phone ? `<span class="fc-tt-phone" dir="ltr">(${p.client_phone})</span>` : '';
+    const doctor = p.doctor_name ? `د. ${p.doctor_name}` : '-';
+    const type = p.appointment_type || 'موعد';
+    const status = p.status_display || '';
+    const notes = p.notes ? `<div class="fc-tt-row fc-tt-notes"><span class="fc-tt-icon">📝</span><span>${p.notes}</span></div>` : '';
+    const badgeBg = p.theme_badge_bg || '#e9d5ff';
+    const badgeText = p.theme_badge_text || '#6b21a8';
+    const borderColor = p.theme_border || '#9b5ec9';
+
+    let timeFormatted = '';
+    if (event.start) {
+        timeFormatted = event.start.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit', hour12: true });
+        if (event.end) {
+            timeFormatted += ' - ' + event.end.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+    }
+
+    calendarTooltipEl.innerHTML = `
+        <div class="fc-tt-container" style="border-top: 3.5px solid ${borderColor};">
+            <div class="fc-tt-header">
+                <span class="fc-tt-badge" style="background: ${badgeBg}; color: ${badgeText};">${type}</span>
+                <span class="fc-tt-status">${status}</span>
+            </div>
+            <div class="fc-tt-time">⏰ ${timeFormatted}</div>
+            <div class="fc-tt-body">
+                <div class="fc-tt-row fc-tt-patient">
+                    <span class="fc-tt-icon">🐾</span>
+                    <strong class="fc-tt-patient-name">${animal}</strong>
+                    <span class="fc-tt-species">${species}</span>
+                </div>
+                <div class="fc-tt-row">
+                    <span class="fc-tt-icon">👤</span>
+                    <span>${client} ${phone}</span>
+                </div>
+                <div class="fc-tt-row">
+                    <span class="fc-tt-icon">👨‍⚕️</span>
+                    <span>${doctor}</span>
+                </div>
+                ${notes}
+            </div>
+            <div class="fc-tt-footer">انقر على الموعد لعرض التفاصيل الكاملة</div>
+        </div>
+    `;
+
+    calendarTooltipEl.style.display = 'block';
+    calendarTooltipEl.style.visibility = 'hidden';
+
+    const rect = el.getBoundingClientRect();
+    const ttRect = calendarTooltipEl.getBoundingClientRect();
+
+    let left = rect.right - ttRect.width;
+    if (left < 10) left = rect.left;
+    if (left + ttRect.width > window.innerWidth - 12) {
+        left = window.innerWidth - ttRect.width - 12;
+    }
+    if (left < 12) left = 12;
+
+    let top = rect.bottom + 6;
+    if (top + ttRect.height > window.innerHeight - 12) {
+        top = rect.top - ttRect.height - 6;
+    }
+    if (top < 12) top = 12;
+
+    calendarTooltipEl.style.left = `${left}px`;
+    calendarTooltipEl.style.top = `${top}px`;
+    calendarTooltipEl.style.visibility = 'visible';
+    calendarTooltipEl.style.opacity = '1';
+}
+
+function hideCalendarTooltip() {
+    if (calendarTooltipEl) {
+        calendarTooltipEl.style.display = 'none';
+        calendarTooltipEl.style.opacity = '0';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (calendarTooltipEl && !e.target.closest('.fc-event') && !e.target.closest('#fc-event-tooltip')) {
+        hideCalendarTooltip();
+    }
+});
+
+function appointmentsState() {
+        const filterCtrl = typeof window.filterController === 'function'
+            ? window.filterController('appointments')
+            : { filtersOpen: true, hasActiveFilters: false, activeFiltersCount: 0, toggleFilters() { this.filtersOpen = !this.filtersOpen; } };
+
+        return {
+            ...filterCtrl,
+            currentView: 'list',
+            showAddModal: false,
+            showEditModal: false,
+            showDetailModal: false,
+            showDeleteModal: false,
+            showRestoreModal: false,
+            showHardDeleteModal: false,
+            showBulkHardDeleteModal: false,
+            selectedEvent: null,
+            deleteAppointmentId: null,
+            deleteAnimalName: '',
+            restoreAppointmentId: null,
+            restoreAnimalName: '',
+            hardDeleteId: null,
+            hardDeleteAnimalName: '',
+            selectedIds: [],
+            selectAll: false,
+            isUpdatingStatus: false,
+            toggleSelectAll(allIds) {
+                if (this.selectAll) {
+                    this.selectedIds = [...allIds];
+                } else {
+                    this.selectedIds = [];
+                }
+            },
+            quickUpdateStatus(id, newStatus) {
+                if (!id || this.isUpdatingStatus) return;
+                this.isUpdatingStatus = true;
+
+                // Robust CSRF extraction (from cookie, DOM input, or rendered template tag)
+                let csrfToken = '';
+                const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
+                if (cookieMatch) {
+                    csrfToken = cookieMatch[1];
+                }
+                if (!csrfToken) {
+                    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                    if (input) csrfToken = input.value;
+                }
+                if (!csrfToken) {
+                    csrfToken = '{{ csrf_token }}';
+                }
+
+                const formData = new FormData();
+                formData.append('status', newStatus);
+                if (csrfToken) {
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+                }
+
+                fetch(`/appointments/${id}/status/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (response.ok && data.success) {
+                        if (this.selectedEvent && this.selectedEvent.id == id) {
+                            // Reassign object to guarantee immediate Alpine reactivity
+                            this.selectedEvent = {
+                                ...this.selectedEvent,
+                                status: data.status,
+                                status_display: data.status_display
+                            };
+                        }
+                        this.refreshCalendar();
+                    } else {
+                        alert(data.error || 'فشل تحديث حالة الموعد.');
+                    }
+                })
+                .catch((err) => {
+                    console.error('Update status error:', err);
+                    alert('تعذر الاتصال بالخادم لتحديث الحالة.');
+                })
+                .finally(() => {
+                    this.isUpdatingStatus = false;
+                });
+            },
+            // Patient Autocomplete State (Add Modal)
+            addPatientQuery: '',
+            addPatientResults: [],
+            isSearchingAddPatient: false,
+            showAddPatientDropdown: false,
+            selectedAddPatient: null,
+
+            searchAddPatients() {
+                const q = this.addPatientQuery.trim();
+                if (!q) {
+                    this.addPatientResults = [];
+                    this.showAddPatientDropdown = false;
+                    return;
+                }
+                this.isSearchingAddPatient = true;
+                fetch(`/patients/api/search/?q=${encodeURIComponent(q)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        this.addPatientResults = data.results || [];
+                        this.showAddPatientDropdown = true;
+                    })
+                    .catch(err => console.error('Patient search error:', err))
+                    .finally(() => { this.isSearchingAddPatient = false; });
+            },
+
+            selectAddPatient(patient) {
+                this.selectedAddPatient = patient;
+                this.addPatientQuery = '';
+                this.addPatientResults = [];
+                this.showAddPatientDropdown = false;
+            },
+
+            clearAddPatient() {
+                this.selectedAddPatient = null;
+                this.addPatientQuery = '';
+                this.addPatientResults = [];
+            },
+
+            // Patient Autocomplete State (Edit Modal)
+            editPatientQuery: '',
+            editPatientResults: [],
+            isSearchingEditPatient: false,
+            showEditPatientDropdown: false,
+            selectedEditPatient: null,
+            isChangingEditPatient: false,
+
+            searchEditPatients() {
+                const q = this.editPatientQuery.trim();
+                if (!q) {
+                    this.editPatientResults = [];
+                    this.showEditPatientDropdown = false;
+                    return;
+                }
+                this.isSearchingEditPatient = true;
+                fetch(`/patients/api/search/?q=${encodeURIComponent(q)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        this.editPatientResults = data.results || [];
+                        this.showEditPatientDropdown = true;
+                    })
+                    .catch(err => console.error('Patient search error:', err))
+                    .finally(() => { this.isSearchingEditPatient = false; });
+            },
+
+            selectEditPatient(patient) {
+                this.selectedEditPatient = patient;
+                this.editData.animal_id = patient.id;
+                this.editData.animal_name = patient.name;
+                this.editData.animal_id_code = patient.animal_id;
+                this.editData.client_name = patient.client_name;
+                this.editData.client_phone = patient.client_phone;
+                this.editData.species_display = patient.species_display;
+                this.editPatientQuery = '';
+                this.editPatientResults = [];
+                this.showEditPatientDropdown = false;
+                this.isChangingEditPatient = false;
+            },
+
+            editData: {
+                id: null,
+                animal_id: '',
+                animal_name: '',
+                animal_id_code: '',
+                client_name: '',
+                client_phone: '',
+                species_display: '',
+                doctor_id: '',
+                date: '',
+                time: '',
+                duration: 30,
+                appointment_type: 'CHECKUP',
+                status: 'SCHEDULED',
+                brought_by: '',
+                notes: ''
+            },
+            addError: '',
+            hasPastDateWarning: false,
+            confirmPastDate: false,
+            isSubmittingAdd: false,
+            editError: '',
+            hasPastDateEditWarning: false,
+            confirmPastDateEdit: false,
+            isSubmittingEdit: false,
+            submitAddForm(event) {
+                if (!this.selectedAddPatient) {
+                    this.addError = 'يرجى البحث واختيار المريض (الحيوان) لإتمام حجز الموعد.';
+                    this.hasPastDateWarning = false;
+                    return;
+                }
+                this.isSubmittingAdd = true;
+                this.addError = '';
+                const formData = new FormData(event.target);
+                formData.set('animal', this.selectedAddPatient.id);
+                if (this.confirmPastDate) {
+                    formData.set('confirm_past_date', '1');
+                }
+
+                fetch(event.target.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (response.ok && data.success) {
+                        this.showAddModal = false;
+                        this.addError = '';
+                        this.hasPastDateWarning = false;
+                        this.confirmPastDate = false;
+                        window.location.reload();
+                    } else {
+                        if (data.has_past_date_warning || (data.errors && data.errors.date && data.errors.date.some(e => e.code === 'past_date'))) {
+                            this.hasPastDateWarning = true;
+                        } else {
+                            this.hasPastDateWarning = false;
+                        }
+                        this.addError = data.error || 'حدث خطأ أثناء حجز الموعد. يرجى التأكد من البيانات المدخلة وعدم تضارب المواعيد.';
+                    }
+                })
+                .catch((err) => {
+                    console.error('Add appointment error:', err);
+                    this.addError = 'تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى.';
+                    this.hasPastDateWarning = false;
+                })
+                .finally(() => {
+                    this.isSubmittingAdd = false;
+                });
+            },
+            submitEditForm(event) {
+                this.isSubmittingEdit = true;
+                this.editError = '';
+                const formData = new FormData(event.target);
+                if (this.confirmPastDateEdit) {
+                    formData.set('confirm_past_date', '1');
+                }
+
+                fetch(event.target.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (response.ok && data.success) {
+                        this.showEditModal = false;
+                        this.editError = '';
+                        this.hasPastDateEditWarning = false;
+                        this.confirmPastDateEdit = false;
+                        window.location.reload();
+                    } else {
+                        if (data.has_past_date_warning || (data.errors && data.errors.date && data.errors.date.some(e => e.code === 'past_date'))) {
+                            this.hasPastDateEditWarning = true;
+                        } else {
+                            this.hasPastDateEditWarning = false;
+                        }
+                        this.editError = data.error || 'حدث خطأ أثناء تعديل الموعد. يرجى التأكد من عدم وجود تضارب في المواعيد.';
+                    }
+                })
+                .catch((err) => {
+                    console.error('Edit appointment error:', err);
+                    this.editError = 'تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى.';
+                    this.hasPastDateEditWarning = false;
+                })
+                .finally(() => {
+                    this.isSubmittingEdit = false;
+                });
+            },
+            initCalendar() {
+                this.$nextTick(() => {
+                    const calendarEl = document.getElementById('calendar');
+                    if (!calendarEl) return;
+                    if (window.clinicCalendar) {
+                        window.clinicCalendar.updateSize();
+                        window.clinicCalendar.refetchEvents();
+                        return;
+                    }
+
+                    const calendar = new FullCalendar.Calendar(calendarEl, {
+                        locale: 'ar',
+                        direction: 'rtl',
+                        initialView: 'timeGridWeek',
+                        headerToolbar: {
+                            right: 'prev,next today',
+                            center: 'title',
+                            left: 'dayGridMonth,timeGridWeek,timeGridDay'
+                        },
+                        buttonText: {
+                            today: 'اليوم',
+                            month: 'شهر',
+                            week: 'أسبوع',
+                            day: 'يوم'
+                        },
+                        slotMinTime: '09:00:00',
+                        slotMaxTime: '22:00:00',
+                        allDaySlot: false,
+                        slotDuration: '00:15:00',
+                        slotLabelInterval: '01:00',
+                        slotEventOverlap: false,
+                        dayMaxEvents: 3,
+                        moreLinkText: function (n) { return '+ ' + n + ' أخرى'; },
+                        eventMinHeight: 24,
+                        nowIndicator: true,
+                        eventTimeFormat: {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            meridiem: 'short',
+                            hour12: true
+                        },
+                        slotLabelFormat: {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            meridiem: 'short',
+                            hour12: true
+                        },
+                        eventContent: function (arg) {
+                            try {
+                                const p = (arg && arg.event && arg.event.extendedProps) || {};
+                                const timeText = (arg && arg.timeText) || '';
+                                const rawTitle = (arg && arg.event && arg.event.title) ? String(arg.event.title) : 'موعد';
+                                const animalName = p.animal_name || rawTitle.split('(')[0].trim();
+                                const clientName = p.client_name || '';
+                                const doctorName = p.doctor_name || '';
+                                const typeName = p.appointment_type || '';
+                                const borderColor = p.theme_border || (arg && arg.event && arg.event.borderColor) || '#9b5ec9';
+                                const textColor = p.theme_text || (arg && arg.event && arg.event.textColor) || '#1e293b';
+                                const badgeBg = p.theme_badge_bg || '#e9d5ff';
+                                const badgeText = p.theme_badge_text || '#6b21a8';
+
+                                return {
+                                    html: `
+                                    <div class="fc-event-clean-card" style="border-right-color: ${borderColor};">
+                                        <!-- Desktop / Tablet Detailed View -->
+                                        <div class="fc-card-full-view">
+                                            <div class="fc-card-header">
+                                                ${typeName ? `<span class="fc-card-badge" style="background: ${badgeBg}; color: ${badgeText};">${typeName}</span>` : ''}
+                                                ${timeText ? `<span class="fc-card-time" style="color: ${borderColor};">${timeText}</span>` : ''}
+                                            </div>
+                                            <div class="fc-card-body">
+                                                ${animalName ? `<div class="fc-card-title" style="color: ${textColor};">${animalName}</div>` : ''}
+                                                ${clientName ? `<div class="fc-card-owner" style="color: ${textColor}; opacity: 0.85;">(${clientName})</div>` : ''}
+                                                ${doctorName ? `<div class="fc-card-doctor" style="color: ${textColor}; opacity: 0.85;">👨‍⚕️ د. ${doctorName}</div>` : ''}
+                                            </div>
+                                        </div>
+
+                                        <!-- Mobile / Small Screens Sleek Dot & Capsule View -->
+                                        <div class="fc-card-dot-view" style="color: ${textColor};">
+                                            <span class="fc-dot-indicator" style="background-color: ${borderColor}; box-shadow: 0 0 0 2px ${badgeBg};"></span>
+                                            <span class="fc-dot-text">${animalName || 'موعد'}</span>
+                                        </div>
+                                    </div>
+                                `
+                                };
+                            } catch (e) {
+                                console.error('eventContent render error:', e);
+                                return { html: `<div style="padding: 2px 4px; font-weight: bold;">${(arg && arg.event && arg.event.title) || 'موعد'}</div>` };
+                            }
+                        },
+                        events: function (info, successCallback, failureCallback) {
+                            const doctorId = document.getElementById('filter-doctor-select')?.value || 'all';
+                            const statusVal = document.getElementById('filter-status-select')?.value || 'all';
+                            const url = `{% url 'appointments:api_events' %}?start=${info.startStr}&end=${info.endStr}&doctor_id=${doctorId}&status=${statusVal}`;
+
+                            fetch(url)
+                                .then(response => response.json())
+                                .then(data => successCallback(data))
+                                .catch(error => {
+                                    console.error('Error fetching calendar events:', error);
+                                    failureCallback(error);
+                                });
+                        },
+                        eventMouseEnter: function (info) {
+                            showCalendarTooltip(info.event, info.el);
+                        },
+                        eventMouseLeave: function (info) {
+                            hideCalendarTooltip();
+                        },
+                        eventClick: (info) => {
+                            hideCalendarTooltip();
+                            const props = (info.event && info.event.extendedProps) ? { ...info.event.extendedProps } : {};
+                            if (!props.id && info.event && info.event.id) {
+                                props.id = parseInt(info.event.id, 10) || info.event.id;
+                            }
+                            this.selectedEvent = props;
+                            this.showDetailModal = true;
+                        }
+                    });
+
+                    calendar.render();
+                    calendarEl.dataset.initialized = 'true';
+                    window.clinicCalendar = calendar;
+                });
+            },
+            refreshCalendar() {
+                if (window.clinicCalendar) {
+                    window.clinicCalendar.refetchEvents();
+                }
+            },
+        };
+    }
+</script>
+
+<div x-data="appointmentsState()">
+
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">إدارة المواعيد والتقويم</h1>
+            <p class="text-gray-500 mt-1">جدولة ومتابعة مواعيد الفحص والعمليات مع منع تضارب المواعيد</p>
+        </div>
+        {% if can_manage_appointments %}
+        <div class="flex gap-2">
+            <button @click="showAddModal = true"
+                class="btn-create text-white font-bold py-2.5 px-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center text-sm cursor-pointer">
+                <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                حجز موعد جديد
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div
+            class="p-4 rounded-lg text-sm flex items-center justify-between {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200{% else %}bg-red-50 text-red-800 border border-red-200{% endif %}">
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 1. Urgent Alert Banner -->
+    {% include 'appointments/partials/alert_banner.html' %}
+
+    <!-- 3. Filter Bar & View Toggle -->
+    {% include 'appointments/partials/filter_bar.html' %}
+
+    <!-- 4. List View -->
+    {% include 'appointments/partials/list_view.html' %}
+
+    <!-- 5. Calendar View -->
+    {% include 'appointments/partials/calendar_view.html' %}
+
+    <!-- Modals -->
+    {% include 'appointments/modals/add_modal.html' %}
+    {% include 'appointments/modals/edit_modal.html' %}
+    {% include 'appointments/modals/detail_modal.html' %}
+    {% include 'appointments/modals/delete_modal.html' %}
+    {% include 'appointments/modals/restore_modal.html' %}
+    {% include 'appointments/modals/hard_delete_modal.html' %}
+
+</div>
+{% endblock %}

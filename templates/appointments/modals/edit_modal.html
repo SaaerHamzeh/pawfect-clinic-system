@@ -1,0 +1,248 @@
+<!-- Edit Appointment Modal -->
+<div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div @click="showEditModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+        <div
+            class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
+            <form method="POST" :action="'/appointments/' + editData.id + '/update/'" @submit.prevent="submitEditForm($event)">
+                {% csrf_token %}
+                <input type="hidden" name="animal" :value="editData.animal_id">
+
+                <div class="bg-white px-6 pt-6 pb-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                                {% icon 'edit' 'w-4 h-4' %}
+                            </span>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900">تعديل بيانات الموعد</h3>
+                                <p class="text-xs text-gray-500" x-text="'المريض: ' + editData.animal_name"></p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showEditModal = false; editError = ''"
+                            class="text-gray-400 hover:text-gray-500 cursor-pointer">✕</button>
+                    </div>
+
+                    <!-- In-Modal Past Date Warning Alert -->
+                    <div x-show="hasPastDateEditWarning" x-cloak
+                        class="mb-4 p-3.5 bg-amber-50 border-r-4 border-amber-500 rounded-r-xl text-xs text-amber-900 shadow-sm space-y-2">
+                        <div class="flex items-start gap-2.5">
+                            <span class="flex-shrink-0 text-amber-600">{% icon 'alert-triangle' 'w-5 h-5' %}</span>
+                            <div class="flex-1 font-semibold leading-relaxed" x-text="editError"></div>
+                        </div>
+                        <label class="flex items-center gap-2 p-2 bg-white/90 rounded-lg border border-amber-200 cursor-pointer text-amber-950 font-bold hover:bg-white transition">
+                            <input type="checkbox" name="confirm_past_date" value="1" x-model="confirmPastDateEdit"
+                                class="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500">
+                            <span>تجاهل التحذير وتأكيد الحفظ بتاريخ سابق</span>
+                        </label>
+                    </div>
+
+                    <!-- In-Modal Error Alert -->
+                    <div x-show="editError && !hasPastDateEditWarning" x-cloak
+                        class="mb-4 p-3.5 bg-red-50 border-r-4 border-red-500 rounded-r-xl text-xs text-red-800 flex items-start gap-2.5 shadow-sm">
+                        <span class="flex-shrink-0 text-red-600">{% icon 'alert-triangle' 'w-5 h-5' %}</span>
+                        <div class="flex-1 font-semibold leading-relaxed" x-text="editError"></div>
+                    </div>
+
+                    <!-- Conflict notice -->
+                    <div class="mb-4 p-3 bg-blue-50 border-r-4 border-primary-600 rounded-r-lg text-xs text-primary-900">
+                        <strong>ملاحظة:</strong> يقوم النظام بالتحقق التلقائي لمنع تداخل المواعيد عند تغيير التاريخ، الوقت، أو الطبيب المعالج.
+                    </div>
+
+                    <!-- Patient Info / Change Selector Card -->
+                    <div class="mb-4 relative">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">المريض المرتبط بالموعد</label>
+
+                        <!-- Selected Patient Banner -->
+                        <div x-show="!isChangingEditPatient"
+                            class="flex items-center justify-between p-3 bg-slate-50 border border-gray-200 rounded-xl">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                                    {% icon 'paw' 'w-5 h-5' %}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <strong class="text-xs text-gray-900 font-bold" x-text="editData.animal_name"></strong>
+                                        <span x-show="editData.animal_id_code" class="font-mono text-[10px] font-bold bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200"
+                                            x-text="'#' + editData.animal_id_code"></span>
+                                        <span x-show="editData.species_display" class="text-[11px] text-gray-500" x-text="editData.species_display"></span>
+                                    </div>
+                                    <div x-show="editData.client_name" class="text-[11px] text-gray-500 mt-0.5">
+                                        <span class="inline-flex items-center gap-1">{% icon 'user' 'w-3 h-3 text-slate-400' %} المالك: <span x-text="editData.client_name"></span></span>
+                                        <span x-show="editData.client_phone" class="font-mono text-gray-400 mr-2" x-text="'(' + editData.client_phone + ')'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" @click="isChangingEditPatient = true; editPatientQuery = ''"
+                                class="text-xs text-purple-600 hover:text-purple-800 font-bold px-2.5 py-1.5 bg-white hover:bg-purple-50 rounded-lg border border-purple-200 transition shadow-xs cursor-pointer inline-flex items-center gap-1">
+                                {% icon 'refresh' 'w-3 h-3' %}
+                                <span>تغيير المريض</span>
+                            </button>
+                        </div>
+
+                        <!-- Change Patient Search Box -->
+                        <div x-show="isChangingEditPatient" x-cloak class="relative">
+                            <div class="relative">
+                                <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-gray-400">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </span>
+                                <input type="text" x-model="editPatientQuery" @input.debounce.200ms="searchEditPatients()"
+                                    @focus="if(editPatientResults.length) showEditPatientDropdown = true"
+                                    placeholder="ابحث باسم الحيوان، رقم المريض (#ID)، اسم المالك..."
+                                    class="w-full pr-10 pl-24 py-2.5 bg-white border border-purple-300 rounded-xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all">
+
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-2 gap-1.5">
+                                    <span x-show="isSearchingEditPatient" x-cloak>
+                                        <svg class="animate-spin h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                    </span>
+                                    <button type="button" @click="isChangingEditPatient = false"
+                                        class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 bg-gray-100 rounded-lg cursor-pointer">
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Dropdown -->
+                            <div x-show="showEditPatientDropdown && editPatientResults.length" x-cloak
+                                @click.away="showEditPatientDropdown = false"
+                                class="absolute z-50 right-0 left-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-2xl overflow-hidden max-h-56 overflow-y-auto divide-y divide-gray-100">
+                                <template x-for="p in editPatientResults" :key="p.id">
+                                    <div @click="selectEditPatient(p)"
+                                        class="p-2.5 hover:bg-purple-50/70 transition cursor-pointer flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                                🐾
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <strong class="text-xs text-gray-900 font-bold" x-text="p.name"></strong>
+                                                    <span class="font-mono text-[10px] font-bold bg-purple-50 text-purple-700 px-1 py-0.5 rounded border border-purple-100"
+                                                        x-text="'#' + p.animal_id"></span>
+                                                    <span class="text-[11px] text-gray-400" x-text="p.species_display"></span>
+                                                </div>
+                                                <div class="text-[10px] text-gray-500">
+                                                    <span>👤 <span x-text="p.client_name"></span></span>
+                                                    <span x-show="p.client_phone" class="mr-1.5 font-mono text-gray-400" x-text="p.client_phone"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs text-purple-600 font-bold shrink-0 bg-purple-50 px-2 py-0.5 rounded">اختيار ↵</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {% if not is_vet_user %}
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">الطبيب البيطري المعالج <span class="text-red-500">*</span></label>
+                            <select name="doctor" x-model="editData.doctor_id" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none bg-white">
+                                {% for doc in doctors %}
+                                <option value="{{ doc.pk }}">د. {{ doc.get_full_name|default:doc.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="doctor" :value="editData.doctor_id || '{{ user.pk }}'">
+                        {% endif %}
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">مدة الموعد <span class="text-red-500">*</span></label>
+                            <select name="duration" x-model="editData.duration" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none bg-white">
+                                <option value="15">15 دقيقة</option>
+                                <option value="30">30 دقيقة (افتراضي)</option>
+                                <option value="45">45 دقيقة</option>
+                                <option value="60">60 دقيقة (ساعة كاملة)</option>
+                                <option value="90">90 دقيقة</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">تاريخ الموعد <span class="text-red-500">*</span></label>
+                            <input type="date" name="date" x-model="editData.date" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">وقت الموعد (09:00 - 21:45) <span class="text-red-500">*</span></label>
+                            <input type="time" name="time" min="09:00" max="21:45" x-model="editData.time" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">نوع الموعد <span class="text-red-500">*</span></label>
+                            <select name="appointment_type" x-model="editData.appointment_type" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none bg-white">
+                                <option value="CHECKUP">فحص دوري / استشارة</option>
+                                <option value="TREATMENT">علاج / متابعة</option>
+                                <option value="VACCINATION">تطعيم</option>
+                                <option value="BATH">حمام وتجفيف / Bath</option>
+                                <option value="GROOMING">عناية وتنظيف / Grooming</option>
+                                <option value="SURGERY">إجراء جراحي / Surgery</option>
+                                <option value="EMERGENCY">حالة طارئة</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">حالة الموعد <span class="text-red-500">*</span></label>
+                            <select name="status" x-model="editData.status" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none bg-white">
+                                <option value="SCHEDULED">مجدول (Scheduled)</option>
+                                <option value="COMPLETED">مكتمل (Completed)</option>
+                                <option value="CANCELLED">ملغى (Cancelled)</option>
+                                <option value="NO_SHOW">لم يحضر (No-show)</option>
+                            </select>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">نوع التطعيم / اللقاح (لمواعيد التطعيم)</label>
+                            <input type="text" name="vaccine_name" x-model="editData.vaccine_name"
+                                placeholder="اسم اللقاح المطلوب (مثال: تطعيم رباعي، سعار...)"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">الشخص المُحضر (المرافق في الزيارة - اختياري)</label>
+                            <input type="text" name="brought_by" x-model="editData.brought_by"
+                                placeholder="مثال: السائق، الجار، الصديق..."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">ملاحظات وسبب الزيارة</label>
+                            <textarea name="notes" x-model="editData.notes" rows="3"
+                                placeholder="أي تفاصيل أو ملاحظات حول الموعد..."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:border-primary-500 focus:outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                    <button type="submit" :disabled="isSubmittingEdit"
+                        class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-5 py-2.5 btn-save text-sm font-bold text-white shadow-sm hover:shadow-md transition cursor-pointer disabled:opacity-50">
+                        <span x-show="!isSubmittingEdit">حفظ التعديلات</span>
+                        <span x-show="isSubmittingEdit" x-cloak class="flex items-center gap-1.5">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                            جاري الحفظ...
+                        </span>
+                    </button>
+                    <button type="button" @click="showEditModal = false; editError = ''"
+                        class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

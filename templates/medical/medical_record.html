@@ -1,0 +1,1527 @@
+{% extends 'base.html' %}
+{% load static icons %}
+
+{% block title %}السجلات والزيارات السريرية | Pawfect Clinic{% endblock %}
+
+{% block content %}
+<script id="catalog-vaccines-data" type="application/json">
+[
+    {% for vac in catalog_vaccines %}
+    {"name": "{{ vac.name|escapejs }}", "days": {{ vac.default_validity_days|default:365 }}}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+<script>
+function clinicalRecordsState() {
+    const filterCtrl = typeof window.filterController === 'function'
+        ? window.filterController('clinical')
+        : { filtersOpen: true, toggleFilters() { this.filtersOpen = !this.filtersOpen; } };
+
+    return {
+        ...filterCtrl,
+        showAddModal: false,
+        showDetailModal: false,
+        showDeleteModal: false,
+        showRestoreModal: false,
+        showHardDeleteModal: false,
+        showBulkHardDeleteModal: false,
+        selectedRecord: null,
+        deleteRecordId: null,
+        deleteAnimalName: '',
+        restoreRecordId: null,
+        restoreAnimalName: '',
+        hardDeleteRecordId: null,
+        hardDeleteAnimalName: '',
+        selectedIds: [],
+        selectAll: false,
+        addError: '',
+        fieldErrors: {},
+        isSubmittingAdd: false,
+        filterRecordType: '{{ record_type|default:"all" }}',
+
+        // Patient Autocomplete State (Add Modal)
+        addPatientQuery: '',
+        addPatientResults: [],
+        isSearchingAddPatient: false,
+        showAddPatientDropdown: false,
+        selectedAddPatient: null,
+
+        // Doctor & Today Appointments State (Add Modal)
+        selectedDoctorId: '{% if request.user.role == "VET" %}{{ request.user.id }}{% endif %}',
+        todayDoctorAppointments: [],
+        isLoadingAppointments: false,
+        selectedAppointmentId: '',
+
+        // Services List State
+        servicesList: [{name: '', notes: ''}],
+        addServicePreset(name) {
+            if (this.servicesList.length === 1 && !this.servicesList[0].name) {
+                this.servicesList[0].name = name;
+            } else if (!this.servicesList.some(function(s) { return s.name === name; })) {
+                this.servicesList.push({name: name, notes: ''});
+            }
+        },
+        removeService(idx) {
+            if (this.servicesList.length > 1) {
+                this.servicesList.splice(idx, 1);
+            }
+        },
+
+        // Catalog Vaccines & Multi-Vaccines State
+        catalogVaccines: (function() {
+            try {
+                const el = document.getElementById('catalog-vaccines-data');
+                return el ? JSON.parse(el.textContent) : [];
+            } catch (e) {
+                return [];
+            }
+        })(),
+        vaccinesList: [],
+        addVaccine(name, customName) {
+            name = name || '';
+            customName = customName || '';
+            const isCat = this.catalogVaccines.some(function(v) { return v.name === name; });
+            this.vaccinesList.push({
+                name: isCat ? name : (name ? 'OTHER' : ''),
+                custom_name: isCat ? '' : name,
+                batch: '',
+                next_name_choice: 'SAME',
+                next_name_custom: '',
+                next_date: '',
+                notes: ''
+            });
+        },
+        removeVaccine(idx) {
+            this.vaccinesList.splice(idx, 1);
+        },
+        onVaccineChange(vac) {
+            if (vac.name && vac.name !== 'OTHER') {
+                const item = this.catalogVaccines.find(function(v) { return v.name === vac.name; });
+                if (item && item.days && !vac.next_date) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + item.days);
+                    vac.next_date = d.toISOString().split('T')[0];
+                }
+            }
+        },
+
+        init() {
+            if (this.selectedDoctorId) {
+                this.loadDoctorAppointments(this.selectedDoctorId);
+            }
+        },
+
+        loadDoctorAppointments(doctorId) {
+            this.selectedDoctorId = doctorId || '';
+            this.selectedAppointmentId = '';
+            if (!doctorId) {
+                this.todayDoctorAppointments = [];
+                return;
+            }
+            this.isLoadingAppointments = true;
+            fetch('/clinical/api/today-appointments/?doctor_id=' + encodeURIComponent(doctorId))
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    this.todayDoctorAppointments = data.appointments || [];
+                }.bind(this))
+                .catch(function(err) {
+                    console.error('Error loading doctor appointments:', err);
+                    this.todayDoctorAppointments = [];
+                }.bind(this))
+                .finally(function() {
+                    this.isLoadingAppointments = false;
+                }.bind(this));
+        },
+
+        onAppointmentSelect(apptId) {
+            if (!apptId) return;
+            const appt = this.todayDoctorAppointments.find(function(a) { return String(a.id) === String(apptId); });
+            if (appt && appt.animal_id && !this.selectedAddPatient) {
+                this.selectAddPatient({
+                    id: appt.animal_id,
+                    name: appt.animal_name,
+                    animal_id: appt.animal_code,
+                    species_display: appt.species_display,
+                    breed: appt.breed,
+                    client_name: appt.client_name,
+                    client_phone: appt.client_phone,
+                });
+            }
+        },
+
+        searchAddPatients() {
+            const q = this.addPatientQuery.trim();
+            if (!q) {
+                this.addPatientResults = [];
+                this.showAddPatientDropdown = false;
+                return;
+            }
+            this.isSearchingAddPatient = true;
+            fetch('/patients/api/search/?q=' + encodeURIComponent(q))
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    this.addPatientResults = data.results || [];
+                    this.showAddPatientDropdown = true;
+                }.bind(this))
+                .catch(function(err) { console.error('Patient search error:', err); })
+                .finally(function() { this.isSearchingAddPatient = false; }.bind(this));
+        },
+
+        selectAddPatient(patient) {
+            this.selectedAddPatient = patient;
+            this.addPatientQuery = '';
+            this.addPatientResults = [];
+            this.showAddPatientDropdown = false;
+        },
+
+        clearAddPatient() {
+            this.selectedAddPatient = null;
+            this.addPatientQuery = '';
+            this.addPatientResults = [];
+        },
+
+        toggleSelectAll(allIds) {
+            if (this.selectAll) {
+                this.selectedIds = [...allIds];
+            } else {
+                this.selectedIds = [];
+            }
+        },
+
+        submitAddForm(event) {
+            this.isSubmittingAdd = true;
+            this.addError = '';
+            this.fieldErrors = {};
+            const formData = new FormData(event.target);
+            fetch(event.target.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(async (response) => {
+                const data = await response.json().catch(function() { return {}; });
+                if (response.ok && data.success) {
+                    this.showAddModal = false;
+                    this.addError = '';
+                    this.clearAddPatient();
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    this.addError = data.error || 'يرجى تصحيح الأخطاء في البيانات المدخلة.';
+                    this.fieldErrors = data.field_errors || {};
+                }
+            })
+            .catch(function(err) {
+                console.error('Add clinical record error:', err);
+                this.addError = 'تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى.';
+            }.bind(this))
+            .finally(function() {
+                this.isSubmittingAdd = false;
+            }.bind(this));
+        }
+    };
+}
+</script>
+
+<div x-data="clinicalRecordsState()">
+
+    <!-- Header -->
+    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">السجلات والزيارات السريرية</h1>
+            <p class="text-gray-500 mt-1">إدارة الزيارات الطبية، الفحص، التشخيص، الوصفات العلاجية والمرفقات</p>
+        </div>
+
+        {% if can_edit_clinical %}
+        <button @click="showAddModal = true"
+            class="btn-create text-white font-bold py-2.5 px-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center text-sm cursor-pointer">
+            <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            تسجيل زيارة سريرية جديدة
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg text-sm flex items-center justify-between {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200{% else %}bg-red-50 text-red-800 border border-red-200{% endif %}">
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Collapsible Filter Bar -->
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 sm:p-5 mb-6 transition-all duration-200 hover:shadow-md">
+        <!-- Top Action Row -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3"
+            :class="filtersOpen ? 'pb-4 border-b border-gray-100' : ''">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                </div>
+                <span class="text-sm font-bold text-gray-800">البحث وتصفية الزيارات السريرية</span>
+            </div>
+
+            <!-- Toggle Filter Button -->
+            <button @click="toggleFilters()" type="button"
+                :class="filtersOpen ? 'bg-primary-50 text-primary-800 border-primary-200 shadow-inner' : 'bg-slate-50 hover:bg-slate-100 text-gray-700 border-gray-200'"
+                class="px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:shadow">
+                <svg class="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span x-text="filtersOpen ? 'إخفاء الفلاتر' : 'تصفية وبحث'"></span>
+                <svg :class="filtersOpen ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Collapsible Form -->
+        <div x-show="filtersOpen"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 -translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-2"
+            class="mt-4 pt-1">
+            <form method="GET">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <!-- Search Input -->
+                    <div class="lg:col-span-2 relative">
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">بحث سريع</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </span>
+                            <input name="q" value="{{ q }}" type="text"
+                                placeholder="البحث باسم المريض، رقم الهوية، التشخيص، أو المالك..."
+                                class="w-full pr-9 pl-8 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all">
+                            {% if q %}
+                            <a href="?{% if record_type %}record_type={{ record_type }}&{% endif %}{% if filter_deleted %}filter_deleted={{ filter_deleted }}{% endif %}"
+                                class="absolute left-3 top-2.5 text-gray-400 hover:text-red-500 text-xs font-bold transition">✕</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Record Type -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">نوع الزيارة السريرية</label>
+                        <select name="record_type" x-model="filterRecordType" @change="$nextTick(() => { if (filterRecordType !== 'VACCINATION') { $el.form.submit(); } })"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if record_type == 'all' or not record_type %}selected{% endif %}>جميع أنواع الزيارات</option>
+                            <option value="CHECKUP" {% if record_type == 'CHECKUP' %}selected{% endif %}>🩺 فحص عام (Checkup)</option>
+                            <option value="VACCINATION" {% if record_type == 'VACCINATION' %}selected{% endif %}>💉 تطعيم ووقاية (Vaccination)</option>
+                            <option value="SURGERY" {% if record_type == 'SURGERY' %}selected{% endif %}>🔪 جراحة / عملية (Surgery)</option>
+                            <option value="EMERGENCY" {% if record_type == 'EMERGENCY' %}selected{% endif %}>🚨 طوارئ (Emergency)</option>
+                            <option value="VISIT" {% if record_type == 'VISIT' %}selected{% endif %}>📋 زيارة سريرية عامة</option>
+                            <option value="DENTAL" {% if record_type == 'DENTAL' %}selected{% endif %}>🦷 أسنان (Dental)</option>
+                            <option value="FOLLOW_UP" {% if record_type == 'FOLLOW_UP' %}selected{% endif %}>📋 متابعة حالة (Follow-up)</option>
+                            <option value="OTHER" {% if record_type == 'OTHER' %}selected{% endif %}>🐾 أخرى (Other)</option>
+                        </select>
+                    </div>
+
+                    <!-- Vaccine Name Filter (shown when VACCINATION is selected) -->
+                    <div x-show="filterRecordType === 'VACCINATION'" x-cloak>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">نوع التطعيم / اللقاح</label>
+                        <select name="vaccine_name" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="all" {% if vaccine_name == 'all' or not vaccine_name %}selected{% endif %}>جميع اللقاحات</option>
+                            {% for v in catalog_vaccines %}
+                            <option value="{{ v.name }}" {% if vaccine_name == v.name %}selected{% endif %}>{{ v.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Status (Active vs Deleted) -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">حالة السجل</label>
+                        <select name="filter_deleted" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="active" {% if filter_deleted == 'active' %}selected{% endif %}>🟢 السجلات النشطة</option>
+                            <option value="deleted" {% if filter_deleted == 'deleted' %}selected{% endif %}>🗑️ سلة المحذوفات</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Bottom Actions Row -->
+                <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+                    <button type="submit"
+                        class="btn-search px-5 py-2 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition cursor-pointer">
+                        بحث وتطبيق
+                    </button>
+
+                    {% if q or record_type != 'all' or vaccine_name != 'all' or filter_deleted != 'active' %}
+                    <a href="{% url 'clinical:list' %}"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition border border-red-200">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>إلغاء جميع الفلاتر</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-3">
+            <div>
+                <h2 class="text-lg font-bold text-gray-800">
+                    {% if filter_deleted == 'deleted' %}سلة المحذوفات (السجلات السريرية){% else %}سجل الزيارات السريرية{% endif %}
+                </h2>
+                <p class="text-xs text-gray-400 mt-0.5">تفاصيل الفحص، التشخيص، العلاجات الموصوفة والمرفقات الطبية</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Bulk Actions Bar for Trash -->
+                {% if filter_deleted == 'deleted' and can_delete %}
+                <div x-show="selectedIds.length > 0" x-cloak class="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+                    <span class="text-xs font-bold text-red-800">
+                        تم تحديد <span x-text="selectedIds.length"></span> سجل
+                    </span>
+                    <button type="button" @click="showBulkHardDeleteModal = true"
+                        class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-sm transition cursor-pointer">
+                        🗑️ حذف نهائي للمحددة
+                    </button>
+                </div>
+                {% endif %}
+
+                <span class="text-xs bg-slate-100 text-gray-600 px-3 py-1 rounded-full font-medium">
+                    عرض {{ records.object_list|length }} من إجمالي {{ page_obj.paginator.count }}
+                </span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-right whitespace-nowrap">
+                <thead>
+                    <tr class="bg-slate-50 text-gray-500 text-xs font-semibold uppercase">
+                        {% if filter_deleted == 'deleted' and can_delete %}
+                        <th class="px-4 py-3.5 text-center w-10">
+                            <input type="checkbox" x-model="selectAll"
+                                @change="toggleSelectAll([{% for rec in records %}'{{ rec.pk }}'{% if not forloop.last %},{% endif %}{% endfor %}])"
+                                class="rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                        </th>
+                        {% endif %}
+                        <th class="px-6 py-3.5">التاريخ والوقت</th>
+                        <th class="px-6 py-3.5">المريض والمالك</th>
+                        <th class="px-6 py-3.5">النوع والنمط</th>
+                        <th class="px-6 py-3.5">الطبيب المعالج</th>
+                        <th class="px-6 py-3.5">التشخيص والعلاج الموصوف</th>
+                        <th class="px-6 py-3.5">الوزن</th>
+                        <th class="px-6 py-3.5">المرفقات</th>
+                        <th class="px-6 py-3.5 text-center">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                    {% for rec in records %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        {% if filter_deleted == 'deleted' and can_delete %}
+                        <td class="px-4 py-4 text-center">
+                            <input type="checkbox" :value="'{{ rec.pk }}'" x-model="selectedIds"
+                                class="rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                        </td>
+                        {% endif %}
+
+                        <!-- Date -->
+                        <td class="px-6 py-4">
+                            <span class="font-semibold text-gray-900 block text-xs">{{ rec.date_time|date:"Y-m-d" }}</span>
+                            <span class="text-xs text-gray-400 font-mono">{{ rec.date_time|time:"H:i A" }}</span>
+                        </td>
+
+                        <!-- Patient & Owner -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                    {% if rec.animal.species == 'DOG' %}{% icon 'dog' 'w-4 h-4 text-amber-600' %}{% elif rec.animal.species == 'CAT' %}{% icon 'cat' 'w-4 h-4 text-indigo-600' %}{% elif rec.animal.species == 'BIRD' %}{% icon 'bird' 'w-4 h-4 text-emerald-600' %}{% else %}{% icon 'paw' 'w-4 h-4 text-primary-600' %}{% endif %}
+                                </div>
+                                <div>
+                                    <a href="{% url 'patients:detail' rec.animal.pk %}" class="font-bold text-gray-900 hover:text-primary-600 transition flex items-center gap-1.5">
+                                        <span>{{ rec.animal.name }}</span>
+                                        {% if rec.animal.animal_id %}
+                                        <span class="text-[11px] font-mono px-1.5 py-0.5 bg-primary-50 text-primary-700 font-bold rounded border border-primary-200">
+                                            {{ rec.animal.animal_id }}
+                                        </span>
+                                        {% endif %}
+                                    </a>
+                                    <p class="text-xs text-gray-400">
+                                        المالك: <a href="{% url 'clients:detail' rec.animal.client.pk %}" class="hover:underline">{{ rec.animal.client.full_name }}</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Type & Mode -->
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-100 text-gray-700 block w-fit mb-1">
+                                {{ rec.get_record_type_display }}
+                            </span>
+                            {% if rec.appointment %}
+                            <span class="text-[11px] text-blue-600 font-medium">بموعد مسبق (#{{ rec.appointment.pk }})</span>
+                            {% else %}
+                            <span class="text-[11px] text-teal-600 font-medium">زيارة مباشرة (Walk-in)</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Doctor -->
+                        <td class="px-6 py-4 text-xs font-medium text-gray-800">
+                            د. {{ rec.doctor.get_full_name|default:rec.doctor.username }}
+                        </td>
+
+                        <!-- Diagnosis & Treatment -->
+                        <td class="px-6 py-4 max-w-xs">
+                            <p class="font-bold text-gray-900 text-xs truncate" title="{{ rec.diagnosis }}">
+                                {{ rec.diagnosis|default:"بدون تشخيص محدد" }}
+                            </p>
+                            <p class="text-xs text-gray-500 truncate" title="{{ rec.treatment }}">
+                                {{ rec.treatment|default:"-" }}
+                            </p>
+                        </td>
+
+                        <!-- Weight -->
+                        <td class="px-6 py-4 font-mono text-xs text-gray-700">
+                            {% if rec.weight_at_visit %}{{ rec.weight_at_visit }} كغ{% else %}-{% endif %}
+                        </td>
+
+                        <!-- Attachments Count -->
+                        <td class="px-6 py-4">
+                            {% if rec.attachments.count > 0 %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 text-primary-700 border border-blue-200">
+                                {% icon 'paperclip' 'w-3.5 h-3.5 text-slate-500' %} {{ rec.attachments.count }} ملف
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button type="button" @click="selectedRecord = {
+                                    id: '{{ rec.pk }}',
+                                    patientName: '{{ rec.animal.name|escapejs }}',
+                                    animalId: '{{ rec.animal.animal_id|default:''|escapejs }}',
+                                    species: '{{ rec.animal.get_species_display|escapejs }}',
+                                    breed: '{{ rec.animal.breed|default:''|escapejs }}',
+                                    clientName: '{{ rec.animal.client.full_name|escapejs }}',
+                                    clientPhone: '{{ rec.animal.client.phone|escapejs }}',
+                                    patientUrl: '{% url 'patients:detail' rec.animal.pk %}',
+                                    clientUrl: '{% url 'clients:detail' rec.animal.client.pk %}',
+                                    dateTime: '{{ rec.date_time|date:'Y-m-d H:i' }}',
+                                    recordType: '{{ rec.get_record_type_display }}',
+                                    doctor: '{{ rec.doctor.get_full_name|default:rec.doctor.username|escapejs }}',
+                                    appointmentInfo: '{% if rec.appointment %}{{ rec.appointment.date|date:'Y-m-d' }} {{ rec.appointment.time|time:'H:i' }} - {{ rec.appointment.get_appointment_type_display }}{% endif %}',
+                                    weight: '{{ rec.weight_at_visit|default:'' }}',
+                                    diagnosis: '{{ rec.diagnosis|escapejs }}',
+                                    symptoms: '{{ rec.symptoms|escapejs }}',
+                                    treatment: '{{ rec.treatment|escapejs }}',
+                                    medication: '{{ rec.medication|escapejs }}',
+                                    prescription: '{{ rec.prescription|escapejs }}',
+                                    followUp: '{{ rec.follow_up|escapejs }}',
+                                    notes: '{{ rec.notes|escapejs }}',
+                                    vaccineName: '{{ rec.vaccine_name|escapejs }}',
+                                    nextVaccineName: '{{ rec.next_vaccine_name|escapejs }}',
+                                    nextVaccinationDate: '{{ rec.next_vaccination_date|date:'Y-m-d'|default:'' }}',
+                                    batchNumber: '{{ rec.batch_number|escapejs }}',
+                                    vaccines: [
+                                        {% for v in rec.vaccination_records.alive %}
+                                        {
+                                            name: '{{ v.vaccine_name|escapejs }}',
+                                            batch: '{{ v.batch_number|escapejs }}',
+                                            nextName: '{{ v.next_vaccine_name|escapejs }}',
+                                            nextDate: '{{ v.next_due_date|date:'Y-m-d'|default:'' }}',
+                                            notes: '{{ v.notes|escapejs }}',
+                                            reminderStatus: '{% if v.reminder %}{{ v.reminder.get_status_display }}{% endif %}'
+                                        },
+                                        {% empty %}
+                                        {% if rec.vaccine_name %}
+                                        {
+                                            name: '{{ rec.vaccine_name|escapejs }}',
+                                            batch: '{{ rec.batch_number|escapejs }}',
+                                            nextName: '{{ rec.next_vaccine_name|escapejs }}',
+                                            nextDate: '{{ rec.next_vaccination_date|date:'Y-m-d'|default:'' }}',
+                                            notes: '{{ rec.notes|escapejs }}',
+                                            reminderStatus: ''
+                                        }
+                                        {% endif %}
+                                        {% endfor %}
+                                    ],
+                                    services: [
+                                        {% for s in rec.services.all %}
+                                        { name: '{{ s.name|escapejs }}', notes: '{{ s.notes|escapejs }}' },
+                                        {% endfor %}
+                                    ],
+                                    reminders: [
+                                        {% for r in rec.reminders.alive %}
+                                        {
+                                            type: '{{ r.get_reminder_type_display }}',
+                                            dueDate: '{{ r.due_date|date:'Y-m-d' }}',
+                                            notes: '{{ r.notes|escapejs }}',
+                                            status: '{{ r.get_status_display }}'
+                                        },
+                                        {% endfor %}
+                                    ],
+                                    attachments: [
+                                        {% for a in rec.attachments.all %}
+                                        { name: '{{ a.file_name|escapejs }}', url: '{{ a.file.url }}', size: '{{ a.file_size_display }}' },
+                                        {% endfor %}
+                                    ]
+                                }; showDetailModal = true;"
+                                    class="text-xs font-bold px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                    title="عرض تفاصيل الزيارة والتطعيمات بالكامل">
+                                    {% icon 'search' 'w-3.5 h-3.5' %}
+                                    <span>تفاصيل</span>
+                                </button>
+
+                                <a href="{% url 'patients:detail' rec.animal.pk %}" class="text-xs font-bold px-2.5 py-1 text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition" title="فتح الملف الطبي">
+                                    ملف المريض ←
+                                </a>
+
+                                {% if not rec.is_deleted and can_delete %}
+                                    {% if user.is_admin_user or rec.doctor_id == user.pk %}
+                                    <button @click="deleteRecordId = '{{ rec.pk }}'; deleteAnimalName = '{{ rec.animal.name }} ({{ rec.date_time|date:'Y-m-d' }})'; showDeleteModal = true"
+                                        class="text-gray-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition cursor-pointer" title="حذف مؤقت">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                {% elif rec.is_deleted %}
+                                    {% if can_restore %}
+                                    <button @click="restoreRecordId = '{{ rec.pk }}'; restoreAnimalName = '{{ rec.animal.name }}'; showRestoreModal = true"
+                                        class="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition cursor-pointer">
+                                        استعادة
+                                    </button>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <button @click="hardDeleteRecordId = '{{ rec.pk }}'; hardDeleteAnimalName = '{{ rec.animal.name }} ({{ rec.date_time|date:'Y-m-d' }})'; showHardDeleteModal = true"
+                                        class="text-red-700 hover:text-red-900 text-xs font-bold px-2.5 py-1 bg-red-50 hover:bg-red-100 rounded-lg transition cursor-pointer">
+                                        حذف نهائي
+                                    </button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if filter_deleted == 'deleted' and can_delete %}9{% else %}8{% endif %}" class="px-6 py-16 text-center text-gray-400">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {% if filter_deleted == 'deleted' %}
+                                <p class="text-base font-medium text-gray-600">سلة المحذوفات فارغة</p>
+                                <p class="text-sm text-gray-400 mt-1">لا توجد زيارات أو سجلات سريرية محذوفة مؤقتاً</p>
+                                {% else %}
+                                <p class="text-base font-medium text-gray-600">لا توجد سجلات سريرية مسجلة</p>
+                                <p class="text-sm text-gray-400 mt-1">ابدأ بتوثيق أول زيارة سريرية أو فحص بالعيادة</p>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'includes/pagination.html' %}
+    </div>
+
+    <!-- Add Medical Record Modal -->
+    <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div @click="showAddModal = false" class="fixed inset-0 bg-gray-500/75 bg-opacity-75 transition-opacity"></div>
+        <div class="flex items-center justify-center min-h-screen p-4 text-center">
+            <div class="relative w-full max-w-3xl my-6 bg-white rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all z-20">
+                <form method="POST" action="{% url 'clinical:create' %}" enctype="multipart/form-data" @submit.prevent="submitAddForm($event)">
+                    {% csrf_token %}
+                    <div class="bg-white px-6 pt-6 pb-4 max-h-[85vh] overflow-y-auto">
+                        <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                            <h3 class="text-lg font-bold text-gray-900">توثيق زيارة وفحص سريري جديد</h3>
+                            <button type="button" @click="showAddModal = false; addError = ''; clearAddPatient()" class="text-gray-400 hover:text-gray-500 cursor-pointer">✕</button>
+                        </div>
+
+                        <!-- In-Modal Error Alert -->
+                        <div x-show="addError" x-cloak
+                            class="mb-4 p-3.5 bg-red-50 border-r-4 border-red-500 rounded-r-xl text-xs text-red-800 flex items-start gap-2.5 shadow-sm">
+                            <span class="text-base flex-shrink-0">⚠️</span>
+                            <div class="flex-1">
+                                <strong class="block font-bold mb-0.5">تنبيه في البيانات المدخلة:</strong>
+                                <span x-text="addError" class="leading-relaxed font-semibold"></span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-5">
+                            <!-- Section 1: Basic Visit Metadata -->
+                            <div class="bg-slate-50/80 p-4 rounded-xl border border-gray-200/80 space-y-3">
+                                <div class="flex items-center gap-2 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200">
+                                    <span class="flex items-center gap-1.5">{% icon 'clipboard-list' 'w-4 h-4 text-primary-600' %} 1. بيانات الزيارة والمريض الأساسية</span>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <!-- Smart Patient Autocomplete Selector -->
+                                    <div class="relative">
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">
+                                            المريض (الحيوان) والمالك <span class="text-red-500">*</span>
+                                        </label>
+
+                                        <!-- 1. Selected Patient Card -->
+                                        <div x-show="selectedAddPatient" x-cloak
+                                            class="flex items-center justify-between p-3 bg-primary-50/70 border border-primary-200 rounded-xl transition-all">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center shadow-xs">
+                                                    {% icon 'paw' 'w-5 h-5' %}
+                                                </div>
+                                                <div>
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span class="font-bold text-gray-900 text-xs" x-text="selectedAddPatient ? selectedAddPatient.name : ''"></span>
+                                                        <span class="font-mono text-[11px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded border border-purple-200"
+                                                            x-text="selectedAddPatient ? '#' + selectedAddPatient.animal_id : ''"></span>
+                                                        <span class="text-[11px] text-gray-500"
+                                                            x-text="selectedAddPatient ? selectedAddPatient.species_display + (selectedAddPatient.breed ? ' - ' + selectedAddPatient.breed : '') : ''"></span>
+                                                    </div>
+                                                    <div class="text-[11px] text-gray-600 mt-0.5 flex items-center gap-2">
+                                                        <span class="inline-flex items-center gap-1">{% icon 'user' 'w-3.5 h-3.5 text-slate-500' %} المالك: <strong x-text="selectedAddPatient ? selectedAddPatient.client_name : ''"></strong></span>
+                                                        <span x-show="selectedAddPatient && selectedAddPatient.client_phone" class="font-mono text-gray-400"
+                                                            x-text="selectedAddPatient ? '(' + selectedAddPatient.client_phone + ')' : ''"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="button" @click="clearAddPatient()"
+                                                class="text-xs text-red-500 hover:text-red-700 font-bold px-2.5 py-1.5 bg-white hover:bg-red-50 rounded-lg border border-red-200 transition shadow-xs cursor-pointer flex items-center gap-1">
+                                                <span>✕</span>
+                                                <span>تغيير</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- 2. Search Input Box (when no patient selected) -->
+                                        <div x-show="!selectedAddPatient" class="relative">
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 mr-2 right-0 flex items-center pr-3.5 pointer-events-none text-gray-400">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                </span>
+                                                <input type="text" x-model="addPatientQuery" @input.debounce.200ms="searchAddPatients()"
+                                                    @focus="if(addPatientResults.length) showAddPatientDropdown = true"
+                                                    placeholder="ابحث باسم الحيوان، رقم المريض (#ID)، اسم المالك، أو الهاتف..."
+                                                    class="w-full pr-10 pl-9 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all">
+
+                                                <span x-show="isSearchingAddPatient" x-cloak class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                                    <svg class="animate-spin h-4 w-4 text-primary-600" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                                    </svg>
+                                                </span>
+                                            </div>
+
+                                            <!-- Floating Search Results Dropdown -->
+                                            <div x-show="showAddPatientDropdown && addPatientResults.length" x-cloak
+                                                @click.away="showAddPatientDropdown = false"
+                                                class="absolute z-50 right-0 left-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-gray-100">
+                                                <template x-for="p in addPatientResults" :key="p.id">
+                                                    <div @click="selectAddPatient(p)"
+                                                        class="p-3 hover:bg-primary-50/70 transition cursor-pointer flex items-center justify-between gap-3">
+                                                        <div class="flex items-center gap-2.5">
+                                                            <div class="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                {% icon 'paw' 'w-4 h-4' %}
+                                                            </div>
+                                                            <div>
+                                                                <div class="flex items-center gap-2">
+                                                                    <strong class="text-xs text-gray-900 font-bold" x-text="p.name"></strong>
+                                                                    <span class="font-mono text-[10px] font-bold bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100"
+                                                                        x-text="'#' + p.animal_id"></span>
+                                                                    <span class="text-[11px] text-gray-400" x-text="p.species_display + (p.breed ? ' (' + p.breed + ')' : '')"></span>
+                                                                </div>
+                                                                <div class="text-[11px] text-gray-500 mt-0.5">
+                                                                    <span>{% icon 'user' 'w-3 h-3 text-slate-400 inline' %} المالك: <span x-text="p.client_name"></span></span>
+                                                                    <span x-show="p.client_phone" class="mr-2 font-mono text-gray-400" x-text="p.client_phone"></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-xs text-primary-600 font-bold shrink-0 bg-primary-50 px-2 py-1 rounded-lg">اختيار ↵</span>
+                                                    </div>
+                                                </template>
+                                            </div>
+
+                                            <div x-show="showAddPatientDropdown && !isSearchingAddPatient && addPatientResults.length === 0 && Boolean(addPatientQuery.trim())" x-cloak
+                                                class="absolute z-50 right-0 left-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-xl p-4 text-center text-xs text-gray-400">
+                                                لم يتم العثور على مريض يطابق هذا البحث
+                                            </div>
+                                        </div>
+
+                                        <!-- Hidden field for form POST -->
+                                        <input type="hidden" name="animal" :value="selectedAddPatient ? selectedAddPatient.id : ''" required>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        <!-- Doctor -->
+                                        {% if not is_vet_user %}
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">الطبيب المعالج <span class="text-red-500">*</span></label>
+                                            <select name="doctor" id="id_doctor" x-model="selectedDoctorId" @change="loadDoctorAppointments($event.target.value)" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-primary-500 focus:outline-none bg-white">
+                                                <option value="">-- اختر الطبيب المعالج --</option>
+                                                {% for doc in doctors %}
+                                                <option value="{{ doc.id }}" {% if request.user.role == 'VET' and request.user.id == doc.id %}selected{% endif %}>
+                                                    د. {{ doc.get_full_name|default:doc.username }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        {% else %}
+                                        <input type="hidden" name="doctor" id="id_doctor" value="{{ user.pk }}">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">الطبيب المعالج</label>
+                                            <div class="px-3 py-2 bg-slate-100 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                                {% icon 'stethoscope' 'w-4 h-4 text-primary-600' %}
+                                                د. {{ request.user.get_full_name|default:request.user.username }}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- Appointment -->
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                                                <span>الموعد المرتبط اليوم (اختياري)</span>
+                                                <span x-show="isLoadingAppointments" x-cloak class="text-[10px] text-primary-600 font-bold animate-pulse">جاري البحث...</span>
+                                            </label>
+                                            <select name="appointment" id="id_appointment" x-model="selectedAppointmentId" @change="onAppointmentSelect($event.target.value)"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-primary-500 focus:outline-none bg-white">
+                                                <option value="">-- زيارة مباشرة بدون موعد (Walk-in) --</option>
+                                                <template x-for="appt in todayDoctorAppointments" :key="appt.id">
+                                                    <option :value="appt.id" x-text="appt.display"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+
+                                        <!-- Visit Type -->
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">نوع الزيارة <span class="text-red-500">*</span></label>
+                                            {{ form.record_type }}
+                                        </div>
+
+                                        <!-- Date & Time -->
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">تاريخ ووقت الزيارة <span class="text-red-500">*</span></label>
+                                            {{ form.date_time }}
+                                        </div>
+
+                                        <!-- Weight -->
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">الوزن عند الزيارة (كغ)</label>
+                                            {{ form.weight_at_visit }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 2: Services & Procedures with Quick Presets -->
+                            <div class="bg-slate-50/80 p-4 rounded-xl border border-gray-200/80 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-200">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold text-gray-800 flex items-center gap-1.5">{% icon 'sparkles' 'w-4 h-4 text-primary-600' %} 2. الخدمات والإجراءات المنفذة (Multiple Services)</span>
+                                    </div>
+                                    <button type="button" @click="servicesList.push({name: '', notes: ''})" class="text-xs px-2.5 py-1 bg-primary-50 text-primary-700 font-bold rounded-lg hover:bg-primary-100 border border-primary-200 transition">
+                                        + إضافة خدمة
+                                    </button>
+                                </div>
+
+                                <!-- Quick Presets from Admin Catalog -->
+                                <div>
+                                    <span class="text-[11px] text-gray-500 font-medium block mb-1.5">إضافة سريعة بنقرة واحدة من الدليل المعتمد:</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        {% for srv in catalog_services %}
+                                        <button type="button" @click="addServicePreset('{{ srv.name|escapejs }}')" class="text-[11px] px-2.5 py-0.5 bg-white hover:bg-primary-50 text-gray-700 hover:text-primary-700 border border-gray-200 rounded-md transition font-medium cursor-pointer">+ {{ srv.name }}</button>
+                                        {% empty %}
+                                        <button type="button" @click="addServicePreset('فحص سريري شامل')" class="text-[11px] px-2.5 py-0.5 bg-white hover:bg-primary-50 text-gray-700 hover:text-primary-700 border border-gray-200 rounded-md transition font-medium cursor-pointer">+ فحص شامل</button>
+                                        <button type="button" @click="addServicePreset('علاج جروح وتضميد')" class="text-[11px] px-2.5 py-0.5 bg-white hover:bg-primary-50 text-gray-700 hover:text-primary-700 border border-gray-200 rounded-md transition font-medium cursor-pointer">+ علاج جروح</button>
+                                        <button type="button" @click="addServicePreset('قص أظافر')" class="text-[11px] px-2.5 py-0.5 bg-white hover:bg-primary-50 text-gray-700 hover:text-primary-700 border border-gray-200 rounded-md transition font-medium cursor-pointer">+ قص أظافر</button>
+                                        <button type="button" @click="addServicePreset('تنظيف وتعقيم أذنين')" class="text-[11px] px-2.5 py-0.5 bg-white hover:bg-primary-50 text-gray-700 hover:text-primary-700 border border-gray-200 rounded-md transition font-medium cursor-pointer">+ تنظيف أذنين</button>
+                                        <button type="button" @click="addServicePreset('حمام طبي وتجفيف')" class="text-[11px] px-2.5 py-0.5 bg-white hover:bg-primary-50 text-gray-700 hover:text-primary-700 border border-gray-200 rounded-md transition font-medium cursor-pointer">+ حمام طبي</button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2 pt-1">
+                                    <template x-for="(srv, idx) in servicesList" :key="idx">
+                                        <div class="flex items-center gap-2">
+                                            <select name="service_name" x-model="srv.name" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-primary-500 focus:outline-none bg-white font-medium">
+                                                <option value="">-- اختر الخدمة المعتمدة من القائمة --</option>
+                                                {% for cs in catalog_services %}
+                                                <option value="{{ cs.name }}">{{ cs.name }}</option>
+                                                {% empty %}
+                                                <option value="فحص سريري شامل">فحص سريري شامل</option>
+                                                <option value="علاج جروح وتضميد">علاج جروح وتضميد</option>
+                                                <option value="قص أظافر">قص أظافر</option>
+                                                <option value="تنظيف وتعقيم أذنين">تنظيف وتعقيم أذنين</option>
+                                                <option value="حمام طبي وتجفيف">حمام طبي وتجفيف</option>
+                                                {% endfor %}
+                                            </select>
+                                            <input type="text" name="service_notes" x-model="srv.notes" placeholder="تفاصيل الخدمة (اختياري)"
+                                                class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-primary-500 focus:outline-none bg-white">
+                                            <button type="button" @click="removeService(idx)" class="text-red-500 hover:text-red-700 text-xs px-2 py-1 bg-white border border-gray-200 rounded hover:bg-red-50 transition" title="حذف هذا الصف">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Section 3: Multiple Vaccinations & Next Vaccine (إمكانية إضافة أكثر من تطعيم بالزيارة) -->
+                            <div class="bg-teal-50/80 p-4 rounded-xl border border-teal-200/80 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-teal-200">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                                            {% icon 'syringe' 'w-4 h-4 text-teal-700' %}
+                                            3. التطعيمات والتحصينات (إمكانية إضافة أكثر من تطعيم بالزيارة)
+                                        </span>
+                                        <span class="text-[10px] bg-teal-200 text-teal-900 px-2 py-0.5 rounded-full font-bold" x-text="vaccinesList.length + ' تطعيم'"></span>
+                                    </div>
+                                    <button type="button" @click="addVaccine()"
+                                        class="text-xs px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer">
+                                        <span>+</span>
+                                        <span>إضافة تطعيم آخر بالزيارة</span>
+                                    </button>
+                                </div>
+
+                                <!-- Quick Presets from Admin Catalog -->
+                                <div>
+                                    <span class="text-[11px] text-teal-800 font-semibold block mb-1.5">إضافة سريعة بنقرة واحدة من دليل اللقاحات المعتمد:</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        {% for vac in catalog_vaccines %}
+                                        <button type="button" @click="addVaccine('{{ vac.name|escapejs }}'); onVaccineChange(vaccinesList[vaccinesList.length-1])"
+                                            class="text-[11px] px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-900 hover:text-teal-950 border border-teal-200 rounded-lg transition font-medium cursor-pointer shadow-xs flex items-center gap-1">
+                                            <span>💉</span>
+                                            <span>+ {{ vac.name }}</span>
+                                            <span class="text-[10px] text-teal-600">({{ vac.default_validity_days }} يوم)</span>
+                                        </button>
+                                        {% empty %}
+                                        <button type="button" @click="addVaccine('اللقاح الرباعي للقطط (FVRCP)')" class="text-[11px] px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-900 border border-teal-200 rounded-lg transition font-medium cursor-pointer">+ اللقاح الرباعي (FVRCP)</button>
+                                        <button type="button" @click="addVaccine('اللقاح الخماسي للكلاب (DHPP)')" class="text-[11px] px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-900 border border-teal-200 rounded-lg transition font-medium cursor-pointer">+ اللقاح الخماسي (DHPP)</button>
+                                        <button type="button" @click="addVaccine('لقاح داء الكلب (Rabies)')" class="text-[11px] px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-900 border border-teal-200 rounded-lg transition font-medium cursor-pointer">+ داء الكلب (Rabies)</button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <!-- Empty State -->
+                                <div x-show="vaccinesList.length === 0"
+                                    class="p-4 bg-white/70 border border-dashed border-teal-300 rounded-xl text-center text-xs text-teal-700">
+                                    <p class="font-semibold mb-1">لم يتم إضافة تطعيمات لهذه الزيارة بعد.</p>
+                                    <p class="text-[11px] text-gray-500">انقر على «+ إضافة تطعيم آخر بالزيارة» أو اختر أحد اللقاحات المعتمدة أعلاه لتسجيل التطعيم وتوليد تذكير آلي للجرعة القادمة.</p>
+                                </div>
+
+                                <!-- Repeater Cards for each Vaccine -->
+                                <div class="space-y-3 pt-1">
+                                    <template x-for="(vac, vIdx) in vaccinesList" :key="vIdx">
+                                        <div class="p-3.5 bg-white border border-teal-200 rounded-xl shadow-xs space-y-2.5 transition">
+                                            <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                                                <span class="text-xs font-bold text-teal-800 flex items-center gap-1.5">
+                                                    <span class="w-5 h-5 rounded-md bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-black" x-text="vIdx + 1"></span>
+                                                    بيانات التطعيم المعطى #<span x-text="vIdx + 1"></span>
+                                                </span>
+                                                <button type="button" @click="removeVaccine(vIdx)"
+                                                    class="text-[11px] text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50 border border-red-100 transition flex items-center gap-1 cursor-pointer"
+                                                    title="حذف هذا التطعيم">
+                                                    <span>✕</span>
+                                                    <span>حذف</span>
+                                                </button>
+                                            </div>
+
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                                <!-- 1. Administered Vaccine Name -->
+                                                <div class="sm:col-span-2">
+                                                    <label class="block text-[11px] font-bold text-gray-700 mb-1">
+                                                        اسم اللقاح المعطى اليوم <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <select x-model="vac.name" @change="onVaccineChange(vac)"
+                                                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-white font-medium">
+                                                        <option value="">-- اختر اللقاح المعطى --</option>
+                                                        {% for cVac in catalog_vaccines %}
+                                                        <option value="{{ cVac.name }}">{{ cVac.name }} (صلاحية: {{ cVac.default_validity_days }} يوم)</option>
+                                                        {% empty %}
+                                                        <option value="اللقاح الرباعي للقطط (FVRCP)">اللقاح الرباعي للقطط (FVRCP)</option>
+                                                        <option value="اللقاح الخماسي للكلاب (DHPP)">اللقاح الخماسي للكلاب (DHPP)</option>
+                                                        <option value="لقاح داء الكلب (Rabies)">لقاح داء الكلب (Rabies)</option>
+                                                        {% endfor %}
+                                                        <option value="OTHER">+ لقاح آخر (إدخال يدوي)...</option>
+                                                    </select>
+                                                    <div x-show="vac.name === 'OTHER'" class="mt-1.5" x-cloak>
+                                                        <input type="text" x-model="vac.custom_name" placeholder="اكتب اسم اللقاح المعطى..."
+                                                            class="w-full px-3 py-1.5 border border-teal-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-teal-50/30">
+                                                    </div>
+                                                    <input type="hidden" name="vac_name[]" :value="vac.name === 'OTHER' ? vac.custom_name : vac.name">
+                                                </div>
+
+                                                <!-- 2. Batch Number -->
+                                                <div>
+                                                    <label class="block text-[11px] font-bold text-gray-700 mb-1">رقم التشغيلة (Batch/Lot)</label>
+                                                    <input type="text" name="vac_batch[]" x-model="vac.batch" placeholder="اختياري"
+                                                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-white font-mono">
+                                                </div>
+
+                                                <!-- 3. Next Due Date -->
+                                                <div>
+                                                    <label class="block text-[11px] font-bold text-gray-700 mb-1">
+                                                        تاريخ الجرعة القادمة <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <input type="date" name="vac_next_date[]" x-model="vac.next_date" required
+                                                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-white">
+                                                </div>
+
+                                                <!-- 4. Next Vaccine Name (Specify Different Next Dose) -->
+                                                <div class="sm:col-span-2">
+                                                    <label class="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
+                                                        <span>اللقاح اللاحق المستحق للجرعة القادمة</span>
+                                                        <span class="text-[10px] text-teal-700 font-normal">(يمكن تحديد لقاح مختلف عن الحالي)</span>
+                                                    </label>
+                                                    <select x-model="vac.next_name_choice"
+                                                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-white font-medium">
+                                                        <option value="SAME">نفس اللقاح المعطى حالياً (جرعة تنشيطية/دورية)</option>
+                                                        <optgroup label="-- اختر لقاحاً لاحقاً مختلفاً من الدليل المعتمد --">
+                                                            {% for cVac in catalog_vaccines %}
+                                                            <option value="{{ cVac.name }}">{{ cVac.name }}</option>
+                                                            {% empty %}
+                                                            <option value="لقاح داء الكلب (Rabies)">لقاح داء الكلب (Rabies)</option>
+                                                            {% endfor %}
+                                                        </optgroup>
+                                                        <option value="CUSTOM">+ تحديد لقاح لاحق آخر (كتابة يدوية)...</option>
+                                                    </select>
+                                                    <div x-show="vac.next_name_choice === 'CUSTOM'" class="mt-1.5" x-cloak>
+                                                        <input type="text" x-model="vac.next_name_custom" placeholder="اكتب اسم اللقاح اللاحق المستحق..."
+                                                            class="w-full px-3 py-1.5 border border-teal-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-teal-50/30">
+                                                    </div>
+                                                    <input type="hidden" name="vac_next_name[]"
+                                                        :value="vac.next_name_choice === 'SAME' ? (vac.name === 'OTHER' ? vac.custom_name : vac.name) : (vac.next_name_choice === 'CUSTOM' ? vac.next_name_custom : vac.next_name_choice)">
+                                                </div>
+
+                                                <!-- 5. Vaccine Notes -->
+                                                <div class="sm:col-span-2">
+                                                    <label class="block text-[11px] font-bold text-gray-700 mb-1">ملاحظات التطعيم (اختياري)</label>
+                                                    <input type="text" name="vac_notes[]" x-model="vac.notes" placeholder="ملاحظات الجرعة، موضع الحقن، رد الفعل..."
+                                                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-teal-500 focus:outline-none bg-white">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Section 4: Doctor-Only Follow-Up Reminder -->
+                            {% if request.user.role == 'VET' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+                            <div x-data="{ addReminder: false }" class="p-4 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="create_reminder" x-model="addReminder" value="true" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                                    <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">{% icon 'bell' 'w-4 h-4 text-indigo-700' %} 4. إنشاء تذكير متابعة آلي من الطبيب المعالج</span>
+                                </label>
+                                <div x-show="addReminder" class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">نوع التذكير</label>
+                                        <select name="reminder_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white">
+                                            <option value="FOLLOW_UP" selected>متابعة حالة</option>
+                                            <option value="APPOINTMENT">موعد</option>
+                                            <option value="CHECKUP">فحص دوري</option>
+                                            <option value="VACCINATION">تطعيم</option>
+                                            <option value="GENERAL">تذكير عام</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">تاريخ الاستحقاق <span class="text-red-500">*</span></label>
+                                        <input type="date" name="reminder_due_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">ملاحظات التذكير</label>
+                                        <input type="text" name="reminder_notes" placeholder="ملاحظات المتابعة..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Section 5: Clinical Examination, Diagnosis & Treatment -->
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">الأعراض والفحص البدني (Symptoms)</label>
+                                        {{ form.symptoms }}
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">التشخيص الطبي (Diagnosis)</label>
+                                        {{ form.diagnosis }}
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">العلاج والإجراءات المطبقة</label>
+                                        {{ form.treatment }}
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">الأدوية المعطاة بالعيادة</label>
+                                        {{ form.medication }}
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">الوصفة الطبية المنزلية (Prescription)</label>
+                                        {{ form.prescription }}
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">خطة المتابعة ومواعيد المراجعة</label>
+                                        {{ form.follow_up }}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">ملاحظات سريرية أو إدارية إضافية (Notes)</label>
+                                    {{ form.notes }}
+                                </div>
+                            </div>
+
+                            <!-- Section 6: Medical File Attachment -->
+                            <div class="p-4 bg-slate-50 border border-gray-200 rounded-xl">
+                                <label class="text-xs font-semibold text-gray-800 mb-1 flex items-center gap-1.5">{% icon 'paperclip' 'w-4 h-4 text-slate-600' %} 6. رفع مرفق طبي مع الزيارة (أشعة / تحليل / PDF حتى 15MB)</label>
+                                {{ form.attachment_file }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" :disabled="isSubmittingAdd"
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-6 py-2.5 btn-save text-sm font-bold text-white shadow-md hover:shadow-lg focus:outline-none cursor-pointer disabled:opacity-50">
+                            <span x-show="!isSubmittingAdd">حفظ وتوثيق الزيارة</span>
+                            <span x-show="isSubmittingAdd" x-cloak class="flex items-center gap-1.5">
+                                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                جاري التوثيق...
+                            </span>
+                        </button>
+                        <button type="button" @click="showAddModal = false; addError = ''; clearAddPatient()" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clinical Record Details Modal (عرض كافة التفاصيل والتطعيمات) -->
+    <div x-show="showDetailModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showDetailModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <!-- Header -->
+                <div class="bg-slate-900 px-6 py-4 flex items-center justify-between text-white">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+                            {% icon 'stethoscope' 'w-5 h-5' %}
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold flex items-center gap-2">
+                                <span>تفاصيل الزيارة السريرية</span>
+                                <span class="text-xs font-mono px-2 py-0.5 rounded bg-teal-500/20 text-teal-300" x-text="selectedRecord?.recordType"></span>
+                            </h3>
+                            <p class="text-xs text-slate-400 font-mono" x-text="selectedRecord?.dateTime"></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="showDetailModal = false" class="text-slate-400 hover:text-white transition p-1 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    <!-- Patient & Client Quick Card -->
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between flex-wrap gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+                                {% icon 'paw' 'w-5 h-5' %}
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <strong class="text-sm font-bold text-gray-900" x-text="selectedRecord?.patientName"></strong>
+                                    <span x-show="selectedRecord?.animalId" class="text-[11px] font-mono px-1.5 py-0.5 bg-primary-50 text-primary-700 font-bold rounded border border-primary-200" x-text="selectedRecord?.animalId"></span>
+                                    <span class="text-xs text-gray-500" x-text="'(' + (selectedRecord?.species || '') + (selectedRecord?.breed ? ' - ' + selectedRecord?.breed : '') + ')'"></span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5">
+                                    <span>صاحب الحيوان:</span>
+                                    <a :href="selectedRecord?.clientUrl" class="font-semibold text-primary-700 hover:underline" x-text="selectedRecord?.clientName"></a>
+                                    <span x-show="selectedRecord?.clientPhone" class="text-gray-400 font-mono mr-1" x-text="'• ' + selectedRecord?.clientPhone"></span>
+                                </p>
+                            </div>
+                        </div>
+                        <a :href="selectedRecord?.patientUrl" class="text-xs font-bold px-3 py-1.5 text-teal-800 bg-teal-100 hover:bg-teal-200 rounded-lg transition flex items-center gap-1">
+                            <span>فتح الملف الكامل</span>
+                            <span>←</span>
+                        </a>
+                    </div>
+
+                    <!-- Meta Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                        <div class="p-2.5 bg-slate-50 rounded-lg border border-gray-100">
+                            <span class="text-gray-400 block">الطبيب المعالج:</span>
+                            <span class="font-bold text-gray-800" x-text="'د. ' + (selectedRecord?.doctor || '')"></span>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 rounded-lg border border-gray-100">
+                            <span class="text-gray-400 block">نوع الزيارة:</span>
+                            <span class="font-bold text-gray-800" x-text="selectedRecord?.recordType"></span>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 rounded-lg border border-gray-100">
+                            <span class="text-gray-400 block">الوزن بالفحص:</span>
+                            <span class="font-bold text-gray-800 font-mono" x-text="selectedRecord?.weight ? selectedRecord.weight + ' كغ' : 'غير مسجل'"></span>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 rounded-lg border border-gray-100">
+                            <span class="text-gray-400 block">التاريخ والوقت:</span>
+                            <span class="font-bold text-gray-800 font-mono" x-text="selectedRecord?.dateTime"></span>
+                        </div>
+                        <div class="p-2.5 bg-primary-50/70 rounded-lg border border-primary-200 col-span-2 sm:col-span-4" x-show="selectedRecord?.appointmentInfo">
+                            <span class="text-primary-700 block text-[11px] font-semibold">الموعد المرتبط بهذه الزيارة:</span>
+                            <span class="font-bold text-primary-900 font-mono" x-text="selectedRecord?.appointmentInfo"></span>
+                        </div>
+                    </div>
+
+                    <!-- Services -->
+                    <template x-if="selectedRecord?.services && selectedRecord.services.length > 0">
+                        <div class="p-3 bg-teal-50/70 border border-teal-200 rounded-xl space-y-2">
+                            <span class="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                                {% icon 'sparkles' 'w-4 h-4 text-teal-700' %}
+                                الخدمات والإجراءات المنفذة بالعيادة:
+                            </span>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="(srv, i) in selectedRecord.services" :key="i">
+                                    <span class="px-2.5 py-1 bg-white text-teal-800 text-xs font-semibold rounded-lg border border-teal-200">
+                                        <span x-text="srv.name"></span>
+                                        <span class="text-teal-600 font-normal" x-show="srv.notes" x-text="' (' + srv.notes + ')'"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Vaccinations Breakdown (عرض كافة التطعيمات المنفذة بالتفصيل) -->
+                    <template x-if="(selectedRecord?.vaccines && selectedRecord.vaccines.length > 0) || selectedRecord?.vaccineName">
+                        <div class="p-3 bg-teal-50/80 border border-teal-200 rounded-xl text-xs space-y-2.5">
+                            <div class="flex items-center justify-between pb-1.5 border-b border-teal-200/80">
+                                <span class="font-bold text-teal-900 flex items-center gap-1.5 text-xs">
+                                    {% icon 'syringe' 'w-4 h-4 text-teal-700' %}
+                                    التطعيمات والتحصينات المنفذة بالزيارة:
+                                </span>
+                                <span class="text-[10px] bg-teal-200 text-teal-950 font-bold px-2 py-0.5 rounded-full"
+                                    x-text="((selectedRecord.vaccines && selectedRecord.vaccines.length) ? selectedRecord.vaccines.length : 1) + ' تطعيم'"></span>
+                            </div>
+
+                            <!-- List of multiple administered vaccines -->
+                            <div class="space-y-2">
+                                <template x-for="(vac, vIdx) in (selectedRecord.vaccines && selectedRecord.vaccines.length ? selectedRecord.vaccines : [{name: selectedRecord.vaccineName, batch: selectedRecord.batchNumber, nextName: selectedRecord.nextVaccineName, nextDate: selectedRecord.nextVaccinationDate, notes: ''}])" :key="vIdx">
+                                    <div class="p-2.5 bg-white border border-teal-200/70 rounded-lg shadow-xs space-y-1.5">
+                                        <div class="flex items-center justify-between flex-wrap gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-5 h-5 rounded-md bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-black" x-text="vIdx + 1"></span>
+                                                <strong class="text-xs text-gray-900" x-text="vac.name"></strong>
+                                            </div>
+                                            <span x-show="vac.batch" class="font-mono text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200"
+                                                x-text="'تشغيلة: ' + vac.batch"></span>
+                                        </div>
+
+                                        <!-- Next Dose & Scheduled Vaccine Name -->
+                                        <div x-show="vac.nextDate" class="p-2 bg-teal-50/60 rounded-md border border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                                            <div>
+                                                <span class="text-gray-500">الجرعة القادمة المستحقة:</span>
+                                                <strong class="text-teal-900 font-mono" x-text="vac.nextDate"></strong>
+                                                <span x-show="vac.reminderStatus" class="mr-2 text-[10px] px-1.5 py-0.5 bg-white text-teal-700 rounded border border-teal-200 font-semibold" x-text="'حالة التذكير: ' + vac.reminderStatus"></span>
+                                            </div>
+
+                                            <!-- Distinct Next Vaccine Highlight -->
+                                            <div x-show="vac.nextName" class="font-semibold">
+                                                <template x-if="vac.nextName && vac.nextName !== vac.name">
+                                                    <span class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-flex items-center gap-1">
+                                                        <span>⚠️ لقاح مختلف للجرعة القادمة:</span>
+                                                        <strong x-text="vac.nextName"></strong>
+                                                    </span>
+                                                </template>
+                                                <template x-if="!vac.nextName || vac.nextName === vac.name">
+                                                    <span class="text-teal-800">
+                                                        (نفس اللقاح كجرعة دورية/تنشيطية)
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <p x-show="vac.notes" class="text-[11px] text-gray-600 bg-slate-50 p-1.5 rounded">
+                                            <span class="text-gray-400">ملاحظات:</span>
+                                            <span x-text="vac.notes"></span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Doctor Follow-up Reminders (تذكيرات المتابعة) -->
+                    <template x-if="selectedRecord?.reminders && selectedRecord.reminders.length > 0">
+                        <div class="p-3 bg-indigo-50/80 border border-indigo-200 rounded-xl text-xs space-y-2">
+                            <span class="font-bold text-indigo-900 flex items-center gap-1.5">
+                                {% icon 'bell' 'w-4 h-4 text-indigo-700' %}
+                                تذكيرات المتابعة المرتبطة بهذه الزيارة:
+                            </span>
+                            <div class="space-y-1.5">
+                                <template x-for="(rem, rIdx) in selectedRecord.reminders" :key="rIdx">
+                                    <div class="p-2 bg-white border border-indigo-100 rounded-lg flex items-center justify-between text-[11px]">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-indigo-800" x-text="rem.type"></span>
+                                            <span class="text-gray-600 font-mono" x-text="'تاريخ الاستحقاق: ' + rem.dueDate"></span>
+                                            <span x-show="rem.notes" class="text-gray-500" x-text="'- ' + rem.notes"></span>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800" x-text="rem.status"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Symptoms & Diagnosis -->
+                    <div class="space-y-2 text-xs">
+                        <div class="p-3 bg-slate-50 rounded-lg border border-gray-100" x-show="selectedRecord?.diagnosis">
+                            <span class="font-bold text-gray-800 block mb-1">التشخيص الطبي:</span>
+                            <p class="text-gray-700 leading-relaxed whitespace-pre-line" x-text="selectedRecord?.diagnosis"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-gray-100" x-show="selectedRecord?.symptoms">
+                            <span class="font-bold text-gray-800 block mb-1">الأعراض والفحص السريري:</span>
+                            <p class="text-gray-700 leading-relaxed whitespace-pre-line" x-text="selectedRecord?.symptoms"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-gray-100" x-show="selectedRecord?.treatment">
+                            <span class="font-bold text-gray-800 block mb-1">العلاج والإجراءات:</span>
+                            <p class="text-gray-700 leading-relaxed whitespace-pre-line" x-text="selectedRecord?.treatment"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-gray-100" x-show="selectedRecord?.medication">
+                            <span class="font-bold text-indigo-800 block mb-1">الأدوية المعطاة بالعيادة:</span>
+                            <p class="text-gray-700 leading-relaxed whitespace-pre-line" x-text="selectedRecord?.medication"></p>
+                        </div>
+                        <div class="p-3 bg-primary-50/60 rounded-lg border border-primary-100" x-show="selectedRecord?.prescription">
+                            <span class="font-bold text-primary-900 block mb-1">الوصفة الطبية المنزلية (Rx):</span>
+                            <p class="text-primary-800 leading-relaxed font-medium whitespace-pre-line" x-text="selectedRecord?.prescription"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-gray-100" x-show="selectedRecord?.followUp">
+                            <span class="font-bold text-gray-800 block mb-1">خطة المتابعة والمراجعة:</span>
+                            <p class="text-gray-700 leading-relaxed whitespace-pre-line" x-text="selectedRecord?.followUp"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-gray-100" x-show="selectedRecord?.notes">
+                            <span class="font-bold text-gray-800 block mb-1">ملاحظات سريرية أو إدارية إضافية:</span>
+                            <p class="text-gray-700 leading-relaxed whitespace-pre-line" x-text="selectedRecord?.notes"></p>
+                        </div>
+                    </div>
+
+                    <!-- Attachments -->
+                    <template x-if="selectedRecord?.attachments && selectedRecord.attachments.length > 0">
+                        <div class="p-3 bg-slate-50 rounded-xl border border-gray-200 text-xs">
+                            <span class="font-bold text-gray-800 block mb-2">المرفقات المرتبطة بالزيارة:</span>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="(att, i) in selectedRecord.attachments" :key="i">
+                                    <a :href="att.url" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg font-medium text-primary-700 hover:bg-primary-50 transition">
+                                        <span class="inline-flex items-center gap-1">{% icon 'paperclip' 'w-3.5 h-3.5 text-slate-500' %} <span x-text="att.name"></span></span>
+                                        <span class="text-gray-400 font-mono" x-text="'(' + att.size + ')'"></span>
+                                    </a>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Footer -->
+                <div class="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
+                    <button type="button" @click="showDetailModal = false" class="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-slate-900 transition">
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form :action="'/clinical/' + deleteRecordId + '/delete/'" method="POST">
+                    {% csrf_token %}
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-red-600">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">تأكيد حذف السجل الطبي</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            هل أنت متأكد من نقل السجل الطبي الخاص بـ <strong class="text-gray-900" x-text="deleteAnimalName"></strong> إلى سلة المحذوفات؟
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white cursor-pointer">
+                            نعم، نقل للسلة
+                        </button>
+                        <button type="button" @click="showDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restore Modal -->
+    <div x-show="showRestoreModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showRestoreModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form :action="'/clinical/' + restoreRecordId + '/restore/'" method="POST">
+                    {% csrf_token %}
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-emerald-600">
+                            <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">استعادة السجل الطبي</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            هل تريد استعادة السجل الطبي للمريض <strong class="text-gray-900" x-text="restoreAnimalName"></strong>؟
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-restore-confirm text-sm font-bold text-white cursor-pointer">
+                            استعادة الآن
+                        </button>
+                        <button type="button" @click="showRestoreModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Single Hard Delete Confirmation Modal -->
+    <div x-show="showHardDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showHardDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form :action="'/clinical/' + hardDeleteRecordId + '/hard-delete/'" method="POST">
+                    {% csrf_token %}
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-red-600">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف النهائي (قطعي)</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            هل أنت متأكد من الحذف النهائي للسجل الطبي للمريض <strong class="text-gray-900" x-text="hardDeleteAnimalName"></strong>؟
+                            <br>
+                            <span class="text-xs text-red-600 font-bold mt-2 block bg-red-50 p-2.5 rounded-lg border border-red-200">
+                                ⚠️ تحذير: سيتم حذف هذا السجل وكافة مرفقاته الطبية نهائياً من قاعدة البيانات وملفات النظام ولن يكون بالإمكان استعادته أبداً.
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white shadow-sm cursor-pointer">
+                            نعم، حذف نهائي
+                        </button>
+                        <button type="button" @click="showHardDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Hard Delete Confirmation Modal -->
+    <div x-show="showBulkHardDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showBulkHardDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form action="{% url 'clinical:bulk_hard_delete' %}" method="POST">
+                    {% csrf_token %}
+                    <template x-for="id in selectedIds" :key="id">
+                        <input type="hidden" name="selected_ids" :value="id">
+                    </template>
+
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-red-600">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف النهائي للمحددة</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            أنت على وشك حذف <strong class="text-red-700 font-mono text-base" x-text="selectedIds.length"></strong> سجلات طبية ومرفقاتها نهائياً من سلة المحذوفات.
+                            <br>
+                            <span class="text-xs text-red-600 font-bold mt-2 block bg-red-50 p-2.5 rounded-lg border border-red-200">
+                                ⚠️ تنبيه حرج: هذا الإجراء لا يمكن التراجع عنه، وسيتم مسح كافة السجلات والمرفقات المحددة نهائياً.
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white shadow-sm cursor-pointer">
+                            حذف نهائي للكل المحدد
+                        </button>
+                        <button type="button" @click="showBulkHardDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

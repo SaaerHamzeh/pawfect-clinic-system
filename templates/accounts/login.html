@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | Pawfect Clinic</title>
+
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
+
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <link href="{% static 'css/theme.css' %}?v=6" rel="stylesheet">
+    <script src="{% static 'js/alpine.min.js' %}" defer></script>
+</head>
+
+<body class="login-page-bg min-h-screen flex items-center justify-center p-4 font-sans text-slate-800 antialiased"
+      x-data="{ panel: '{% if show_reset %}reset{% else %}login{% endif %}' }">
+    <div class="w-full max-w-md my-6">
+        <div class="login-card bg-white border border-gray-100">
+            <div class="theme-brand-bg px-8 py-7 text-center text-white relative overflow-hidden">
+                <div class="relative z-10 flex flex-col items-center justify-center">
+                    <div class="mt-3 mb-3">
+                        <img src="{% static 'images/logo-white.png' %}" alt="Pawfect Clinic" class="h-14 w-auto max-w-[210px] object-contain drop-shadow-md" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <div class="text-center mb-6">
+                    <h2 class="text-base font-bold text-gray-800" x-show="panel === 'login'">تسجيل الدخول للنظام</h2>
+                    <h2 class="text-base font-bold text-gray-800" x-show="panel === 'reset'" x-cloak>استعادة كلمة المرور</h2>
+                    <p class="text-xs text-gray-500 mt-1" x-show="panel === 'reset'" x-cloak>
+                        أدخل اسم المستخدم ورمز الاستعادة المحفوظ عند إعداد النظام، ثم عيّن كلمة مرور جديدة.
+                    </p>
+                </div>
+
+                {% if success_message %}
+                <div class="mb-5 p-4 bg-emerald-50 border-r-4 border-emerald-500 rounded-r-xl text-xs text-emerald-800 font-medium">
+                    {{ success_message }}
+                </div>
+                {% endif %}
+
+                {% if error_message or form.errors %}
+                <div class="mb-5 p-4 bg-red-50 border-r-4 border-red-500 rounded-r-xl text-xs text-red-700 font-medium flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{{ error_message|default:"اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مجدداً." }}</span>
+                </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'accounts:login' %}" class="space-y-5" x-show="panel === 'login'">
+                    {% csrf_token %}
+
+                    <div>
+                        <label for="username" class="block text-xs font-bold text-gray-700 mb-1.5">
+                            اسم المستخدم
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-gray-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </span>
+                            <input id="username" name="username" type="text" required autofocus dir="ltr"
+                                placeholder="Username..."
+                                class="w-full pr-11 pl-4 py-2.5 border border-gray-300 rounded-xl text-sm text-left focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition bg-slate-50/50">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-xs font-bold text-gray-700 mb-1.5">
+                            كلمة المرور
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-gray-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </span>
+                            <input id="password" name="password" type="password" required dir="ltr"
+                                placeholder="Password..."
+                                class="w-full pr-11 pl-4 py-2.5 border border-gray-300 rounded-xl text-sm text-left focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition bg-slate-50/50">
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit"
+                            class="w-full py-3 px-4 btn-save text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
+                            <span>دخول إلى لوحة التحكم</span>
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="text-center pt-1">
+                        <button type="button" @click="panel = 'reset'"
+                            class="text-xs font-bold text-primary-700 hover:text-primary-900 hover:underline cursor-pointer">
+                            نسيت كلمة المرور؟
+                        </button>
+                    </div>
+                </form>
+
+                <form method="post" action="{% url 'accounts:password_reset' %}" class="space-y-4" x-show="panel === 'reset'" x-cloak>
+                    {% csrf_token %}
+
+                    <div>
+                        <label for="reset-username" class="block text-xs font-bold text-gray-700 mb-1.5">اسم المستخدم</label>
+                        {{ reset_form.username }}
+                    </div>
+                    <div>
+                        <label for="reset-recovery-code" class="block text-xs font-bold text-gray-700 mb-1.5">رمز الاستعادة</label>
+                        {{ reset_form.recovery_code }}
+                        <p class="text-[11px] text-gray-400 mt-1">الرمز الذي ظهر عند الإعداد الأول أو من إدارة المستخدمين (مثال: PC-XXXX-XXXX)</p>
+                    </div>
+                    <div>
+                        <label for="reset-new-password" class="block text-xs font-bold text-gray-700 mb-1.5">كلمة المرور الجديدة</label>
+                        {{ reset_form.new_password }}
+                    </div>
+                    <div>
+                        <label for="reset-confirm-password" class="block text-xs font-bold text-gray-700 mb-1.5">تأكيد كلمة المرور</label>
+                        {{ reset_form.confirm_password }}
+                    </div>
+
+                    <div class="pt-1">
+                        <button type="submit"
+                            class="w-full py-3 px-4 btn-save text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
+                            تعيين كلمة المرور الجديدة
+                        </button>
+                    </div>
+                    <div class="text-center">
+                        <button type="button" @click="panel = 'login'"
+                            class="text-xs font-bold text-gray-500 hover:text-gray-800 hover:underline cursor-pointer">
+                            العودة لتسجيل الدخول
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
+            <span class="text-sm">🐾</span>
+            <span>الشبكة المحلية للعيادة • Pawfect Clinic Local Network</span>
+        </div>
+    </div>
+</body>
+
+</html>

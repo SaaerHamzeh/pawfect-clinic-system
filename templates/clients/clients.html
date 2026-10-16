@@ -1,0 +1,618 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}العملاء | Pawfect Clinic{% endblock %}
+
+{% block content %}
+<div x-data="{
+    ...(typeof window.filterController === 'function' ? window.filterController('clients') : { filtersOpen: true, toggleFilters() { this.filtersOpen = !this.filtersOpen; } }),
+    showAddModal: false,
+    showDeleteModal: false,
+    showRestoreModal: false,
+    showHardDeleteModal: false,
+    showBulkHardDeleteModal: false,
+    deleteClientId: null,
+    deleteClientName: '',
+    restoreClientId: null,
+    restoreClientName: '',
+    hardDeleteClientId: null,
+    hardDeleteClientName: '',
+    selectedIds: [],
+    selectAll: false,
+    addError: '',
+    fieldErrors: {},
+    duplicateWarning: false,
+    confirmDuplicatePhone: false,
+    isSubmittingAdd: false,
+    toggleSelectAll(allIds) {
+        if (this.selectAll) {
+            this.selectedIds = [...allIds];
+        } else {
+            this.selectedIds = [];
+        }
+    },
+    submitAddForm(event) {
+        this.isSubmittingAdd = true;
+        this.addError = '';
+        this.fieldErrors = {};
+        const formData = new FormData(event.target);
+        if (this.confirmDuplicatePhone) {
+            formData.set('confirm_duplicate_phone', '1');
+        }
+        fetch(event.target.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(async (response) => {
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.success) {
+                this.showAddModal = false;
+                this.addError = '';
+                this.duplicateWarning = false;
+                this.confirmDuplicatePhone = false;
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                this.addError = data.error || 'يرجى تصحيح الأخطاء في البيانات المدخلة.';
+                this.fieldErrors = data.field_errors || {};
+                this.duplicateWarning = !!data.duplicate_warning;
+            }
+        })
+        .catch((err) => {
+            console.error('Add client error:', err);
+            this.addError = 'تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى.';
+        })
+        .finally(() => {
+            this.isSubmittingAdd = false;
+        });
+    }
+}">
+
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">إدارة العملاء (المربين)</h1>
+            <p class="text-gray-500 mt-1">سجل أصحاب الحيوانات الأليفة المسجلين في العيادة</p>
+        </div>
+        {% if can_manage_clients %}
+        <button @click="showAddModal = true"
+            class="btn-create text-white font-bold py-2.5 px-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center text-sm cursor-pointer">
+            <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            إضافة عميل جديد
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg text-sm flex items-center justify-between {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200{% else %}bg-red-50 text-red-800 border border-red-200{% endif %}">
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Collapsible Filter Bar -->
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 sm:p-5 mb-6 transition-all duration-200 hover:shadow-md">
+        <!-- Top Action Row -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3"
+            :class="filtersOpen ? 'pb-4 border-b border-gray-100' : ''">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                </div>
+                <span class="text-sm font-bold text-gray-800">البحث وتصفية العملاء</span>
+            </div>
+
+            <!-- Toggle Filter Button -->
+            <button @click="toggleFilters()" type="button"
+                :class="filtersOpen ? 'bg-primary-50 text-primary-800 border-primary-200 shadow-inner' : 'bg-slate-50 hover:bg-slate-100 text-gray-700 border-gray-200'"
+                class="px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:shadow">
+                <svg class="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span x-text="filtersOpen ? 'إخفاء الفلاتر' : 'تصفية وبحث'"></span>
+                <svg :class="filtersOpen ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Collapsible Form -->
+        <div x-show="filtersOpen"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 -translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-2"
+            class="mt-4 pt-1">
+            <form method="GET">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <!-- Search Input -->
+                    <div class="lg:col-span-2 relative">
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">بحث سريع</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </span>
+                            <input name="q" value="{{ q }}" type="text" placeholder="البحث باسم العميل، رقم الهاتف، أو العنوان..."
+                                class="w-full pr-9 pl-8 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all">
+                            {% if q %}
+                            <a href="?{% if status %}status={{ status }}&{% endif %}{% if sort_by %}sort={{ sort_by }}{% endif %}"
+                                class="absolute left-3 top-2.5 text-gray-400 hover:text-red-500 text-xs font-bold transition">✕</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">حالة العميل</label>
+                        <select name="status" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="active" {% if status == 'active' %}selected{% endif %}>🟢 العملاء الحاليين (نشط)</option>
+                            <option value="deleted" {% if status == 'deleted' %}selected{% endif %}>🗑️ سلة المحذوفات</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort Filter -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1">ترتيب حسب</label>
+                        <select name="sort" onchange="this.form.submit()"
+                            class="w-full px-3 py-2.5 bg-slate-50 hover:bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-all cursor-pointer">
+                            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>الأحدث تسجيلاً</option>
+                            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>الاسم (أ-ي)</option>
+                            <option value="pets_count" {% if sort_by == 'pets_count' %}selected{% endif %}>الأكثر حيوانات</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Bottom Actions Row -->
+                <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+                    <button type="submit"
+                        class="btn-search px-5 py-2 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition cursor-pointer">
+                        بحث وتطبيق
+                    </button>
+
+                    {% if q or status != 'active' or sort_by != 'newest' %}
+                    <a href="{% url 'clients:list' %}"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition border border-red-200">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>إلغاء جميع الفلاتر</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Clients Table -->
+    <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <h2 class="text-lg font-bold text-gray-800">
+                    {% if status == 'deleted' %}سلة المحذوفات (العملاء){% else %}قائمة العملاء{% endif %}
+                </h2>
+                <span class="text-xs bg-slate-100 text-gray-600 px-3 py-1 rounded-full font-medium">
+                    عرض {{ clients.object_list|length }} من إجمالي {{ page_obj.paginator.count }}
+                </span>
+            </div>
+
+            <!-- Bulk Actions Bar for Trash -->
+            {% if status == 'deleted' and can_delete %}
+            <div x-show="selectedIds.length > 0" x-cloak class="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+                <span class="text-xs font-bold text-red-800">
+                    تم تحديد <span x-text="selectedIds.length"></span> عميل
+                </span>
+                <button type="button" @click="showBulkHardDeleteModal = true"
+                    class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-sm transition cursor-pointer">
+                    🗑️ حذف نهائي للمحددة
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-right whitespace-nowrap">
+                <thead>
+                    <tr class="bg-slate-50 text-gray-500 text-xs font-semibold uppercase">
+                        {% if status == 'deleted' and can_delete %}
+                        <th class="px-4 py-3.5 text-center w-10">
+                            <input type="checkbox" x-model="selectAll"
+                                @change="toggleSelectAll([{% for client in clients %}'{{ client.pk }}'{% if not forloop.last %},{% endif %}{% endfor %}])"
+                                class="rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                        </th>
+                        {% endif %}
+                        <th class="px-6 py-3.5">اسم العميل (المالك)</th>
+                        <th class="px-6 py-3.5">رقم الهاتف</th>
+                        <th class="px-6 py-3.5">العنوان</th>
+                        <th class="px-6 py-3.5">عدد الحيوانات</th>
+                        <th class="px-6 py-3.5">ملاحظات</th>
+                        <th class="px-6 py-3.5 text-center">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                    {% for client in clients %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        {% if status == 'deleted' and can_delete %}
+                        <td class="px-4 py-4 text-center">
+                            <input type="checkbox" :value="'{{ client.pk }}'" x-model="selectedIds"
+                                class="rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                        </td>
+                        {% endif %}
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="w-9 h-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm ml-3">
+                                    {{ client.full_name|slice:":1" }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'clients:detail' client.pk %}" class="font-semibold text-gray-900 hover:text-primary-600 transition">
+                                        {{ client.full_name }}
+                                    </a>
+                                    <p class="text-xs text-gray-400">سجل: {{ client.created_at|date:"Y-m-d" }}</p>
+                                </div>
+                            </div>
+                        <td class="px-6 py-4 text-gray-700 font-mono dir-ltr text-right">
+                            <div class="font-semibold">{{ client.phone }}</div>
+                            {% if client.secondary_phones.exists %}
+                            <div class="mt-1 flex items-center justify-end gap-1">
+                                <span class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-sans font-medium bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200" title="{% for p in client.secondary_phones %}{{ p.phone }} ({{ p.label }}){% if not forloop.last %} | {% endif %}{% endfor %}">
+                                    +{{ client.secondary_phones.count }} أرقام إضافية
+                                </span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                                {{ client.pets_count }} حيوان
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 max-w-xs truncate" title="{{ client.notes }}">
+                            {{ client.notes|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{% url 'clients:detail' client.pk %}"
+                                    class="text-teal-700 hover:text-teal-900 text-xs font-bold px-2.5 py-1 bg-teal-50 hover:bg-teal-100 rounded-lg transition">
+                                    عرض الملف
+                                </a>
+
+                                {% if not client.is_deleted and can_delete %}
+                                <button @click="deleteClientId = '{{ client.pk }}'; deleteClientName = '{{ client.full_name }}'; showDeleteModal = true"
+                                    class="text-gray-500 hover:text-red-600 text-xs font-semibold px-2.5 py-1 bg-slate-50 hover:bg-red-50 rounded-lg transition cursor-pointer">
+                                    حذف
+                                </button>
+                                {% elif client.is_deleted %}
+                                    {% if can_restore %}
+                                    <button @click="restoreClientId = '{{ client.pk }}'; restoreClientName = '{{ client.full_name }}'; showRestoreModal = true"
+                                        class="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition cursor-pointer">
+                                        استعادة
+                                    </button>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <button @click="hardDeleteClientId = '{{ client.pk }}'; hardDeleteClientName = '{{ client.full_name }}'; showHardDeleteModal = true"
+                                        class="text-red-700 hover:text-red-900 text-xs font-bold px-2.5 py-1 bg-red-50 hover:bg-red-100 rounded-lg transition cursor-pointer">
+                                        حذف نهائي
+                                    </button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if status == 'deleted' and can_delete %}7{% else %}6{% endif %}" class="px-6 py-16 text-center text-gray-400">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857" />
+                                </svg>
+                                <p class="text-base font-medium text-gray-600">
+                                    {% if status == 'deleted' %}سلة المحذوفات فارغة{% else %}لا يوجد عملاء مسجلين{% endif %}
+                                </p>
+                                <p class="text-sm text-gray-400 mt-1">
+                                    {% if status == 'deleted' %}لا يوجد عملاء محذوفين مؤقتاً حالياً{% else %}{% if q %}لم يتم العثور على نتائج تطابق بحثك{% else %}ابدأ بإضافة أول عميل للعيادة{% endif %}{% endif %}
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'includes/pagination.html' %}
+    </div>
+
+    <!-- Add Client Modal -->
+    <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showAddModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form method="POST" action="{% url 'clients:create' %}" @submit.prevent="submitAddForm($event)">
+                    {% csrf_token %}
+                    <div class="bg-white px-6 pt-6 pb-4">
+                        <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                            <h3 class="text-lg font-bold text-gray-900" id="modal-title">إضافة عميل (مربي) جديد</h3>
+                            <button type="button" @click="showAddModal = false; addError = ''" class="text-gray-400 hover:text-gray-500 cursor-pointer">✕</button>
+                        </div>
+
+                        <!-- In-Modal Error Alert -->
+                        <div x-show="addError" x-cloak
+                            :class="duplicateWarning ? 'bg-amber-50 border-amber-500 text-amber-900' : 'bg-red-50 border-red-500 text-red-800'"
+                            class="mb-4 p-3.5 border-r-4 rounded-r-xl text-xs flex flex-col gap-2.5 shadow-sm">
+                            <div class="flex items-start gap-2.5">
+                                <span class="text-base flex-shrink-0" x-text="duplicateWarning ? '⚠️' : '❌'"></span>
+                                <div class="flex-1">
+                                    <strong class="block font-bold mb-0.5" x-text="duplicateWarning ? 'تحذير تكرار رقم الهاتف:' : 'تنبيه في البيانات المدخلة:'"></strong>
+                                    <span x-text="addError" class="leading-relaxed font-semibold"></span>
+                                </div>
+                            </div>
+                            <div x-show="duplicateWarning" class="pt-2 border-t border-amber-200">
+                                <label class="inline-flex items-center gap-2 cursor-pointer font-bold text-amber-950 text-xs">
+                                    <input type="checkbox" name="confirm_duplicate_phone" value="1" x-model="confirmDuplicatePhone" class="rounded border-amber-400 text-primary-600 focus:ring-primary-500 h-4 w-4">
+                                    <span>تجاهل التحذير وتأكيد حفظ العميل بهذا الرقم</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">الاسم الكامل <span class="text-red-500">*</span></label>
+                                {{ form.full_name }}
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">رقم الهاتف الأساسي <span class="text-red-500">*</span></label>
+                                {{ form.phone }}
+                            </div>
+                            <div x-data="{ extraPhones: [] }">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-semibold text-gray-700">أرقام هواتف إضافية (اختياري)</label>
+                                    <button type="button" @click="extraPhones.push({ phone: '', label: 'واتساب' })"
+                                        class="text-[11px] font-bold text-primary-700 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        إضافة رقم آخر
+                                    </button>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <template x-for="(item, index) in extraPhones" :key="index">
+                                        <div class="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                            <input type="text" name="extra_phones" x-model="item.phone"
+                                                placeholder="رقم الهاتف (مثال: 0944112233)"
+                                                class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-xs font-mono focus:border-primary-500 focus:outline-none bg-white">
+                                            
+                                            <select name="extra_labels" x-model="item.label"
+                                                class="w-36 px-2.5 py-1.5 border border-gray-300 rounded-md text-xs focus:border-primary-500 focus:outline-none bg-white">
+                                                <option value="واتساب">واتساب</option>
+                                                <option value="موبايل">موبايل</option>
+                                                <option value="عمل">عمل</option>
+                                                <option value="هاتف أرضي">هاتف أرضي</option>
+                                                <option value="بديل">بديل</option>
+                                            </select>
+
+                                            <button type="button" @click="extraPhones.splice(index, 1)"
+                                                title="حذف الرقم"
+                                                class="text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-md transition cursor-pointer">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <p x-show="extraPhones.length === 0" class="text-[11px] text-gray-400">لا توجد أرقام إضافية مسجلة. اضغط «إضافة رقم آخر» إذا كان للمالك أكثر من رقم.</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">العنوان أو الحي السكني</label>
+                                {{ form.address }}
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">ملاحظات إضافية حول العميل</label>
+                                {{ form.notes }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" :disabled="isSubmittingAdd"
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-5 py-2.5 btn-save text-sm font-bold text-white shadow-sm transition cursor-pointer disabled:opacity-50">
+                            <span x-show="!isSubmittingAdd">حفظ العميل</span>
+                            <span x-show="isSubmittingAdd" x-cloak class="flex items-center gap-1.5">
+                                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                جاري الحفظ...
+                            </span>
+                        </button>
+                        <button type="button" @click="showAddModal = false; addError = ''" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Soft Delete Confirmation Modal -->
+    <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form :action="'/clients/' + deleteClientId + '/delete/'" method="POST">
+                    {% csrf_token %}
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-red-600">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف المؤقت</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            هل أنت متأكد من نقل العميل <strong class="text-gray-900" x-text="deleteClientName"></strong> إلى سلة المحذوفات؟
+                            <br><span class="text-xs text-gray-400 mt-1 block">يمكن استعادته لاحقاً عبر سلة المحذوفات لمن يمتلك الصلاحية.</span>
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white cursor-pointer">
+                            نعم، نقل للسلة
+                        </button>
+                        <button type="button" @click="showDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restore Confirmation Modal -->
+    <div x-show="showRestoreModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showRestoreModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form :action="'/clients/' + restoreClientId + '/restore/'" method="POST">
+                    {% csrf_token %}
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-emerald-600">
+                            <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">استعادة العميل</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            هل تريد استعادة العميل <strong class="text-gray-900" x-text="restoreClientName"></strong> وإعادته إلى قائمة العملاء النشطين؟
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-restore-confirm text-sm font-bold text-white cursor-pointer">
+                            استعادة الآن
+                        </button>
+                        <button type="button" @click="showRestoreModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Single Hard Delete Confirmation Modal -->
+    <div x-show="showHardDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showHardDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form :action="'/clients/' + hardDeleteClientId + '/hard-delete/'" method="POST">
+                    {% csrf_token %}
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-red-600">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف النهائي (قطعي)</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            هل أنت متأكد من الحذف النهائي للعميل <strong class="text-gray-900" x-text="hardDeleteClientName"></strong>؟
+                            <br>
+                            <span class="text-xs text-red-600 font-bold mt-2 block bg-red-50 p-2.5 rounded-lg border border-red-200">
+                                ⚠️ تحذير: سيتم حذف هذا العميل وسجلاته نهائياً من قاعدة البيانات ولن يكون بالإمكان استعادته أبداً.
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white shadow-sm cursor-pointer">
+                            نعم، حذف نهائي
+                        </button>
+                        <button type="button" @click="showHardDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Hard Delete Confirmation Modal -->
+    <div x-show="showBulkHardDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showBulkHardDeleteModal = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form action="{% url 'clients:bulk_hard_delete' %}" method="POST">
+                    {% csrf_token %}
+                    <template x-for="id in selectedIds" :key="id">
+                        <input type="hidden" name="selected_ids" :value="id">
+                    </template>
+
+                    <div class="bg-white p-6">
+                        <div class="flex items-center gap-3 mb-4 text-red-600">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف النهائي للمحددة</h3>
+                        </div>
+
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            أنت على وشك حذف <strong class="text-red-700 font-mono text-base" x-text="selectedIds.length"></strong> عملاء محددين نهائياً من سلة المحذوفات.
+                            <br>
+                            <span class="text-xs text-red-600 font-bold mt-2 block bg-red-50 p-2.5 rounded-lg border border-red-200">
+                                ⚠️ تنبيه حرج: هذا الإجراء لا يمكن التراجع عنه، وسيتم مسح كافة العملاء المحددين نهائياً.
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-2">
+                        <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-danger text-sm font-bold text-white shadow-sm cursor-pointer">
+                            حذف نهائي للكل المحدد
+                        </button>
+                        <button type="button" @click="showBulkHardDeleteModal = false" class="w-full sm:w-auto inline-flex justify-center rounded-xl px-5 py-2.5 btn-cancel text-sm cursor-pointer">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
